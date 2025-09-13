@@ -92,20 +92,29 @@ export class ExtractionService {
                 ...(item.context.requestBody ? ['## Request Body', this.formatRequestBody(item.context.requestBody)] : []),
                 ...(item.context.responses ? ['## Responses', ...this.formatResponses(item.context.responses)] : [])
             ];
-            // Only add context if there's more than just the basic info
-            const hasAdditionalContext = Object.keys(item.context).length > 3; // More than just tags, operationId, deprecated
-            if (hasAdditionalContext) {
-                sections.push('## Technical Details', '```json', JSON.stringify({
-                    operationId: item.context.operationId,
-                    tags: item.context.tags,
-                    deprecated: item.context.deprecated,
-                    ...(item.context.security ? { security: item.context.security } : {})
-                }, null, 2), '```');
-            }
-            return {
+            // Extract the first line of the description as a summary if available
+            const summary = item.what.length > 0
+                ? item.what[0].replace('**Summary**: ', '')
+                : undefined;
+            // Prepare the base return object with all extracted properties
+            const result = {
                 id: item.id,
-                content: sections.join('\n\n')
+                content: sections.join('\n\n'),
+                method: item.method,
+                path: item.path,
+                summary,
+                description: item.context.description,
+                tags: item.context.tags,
+                operationId: item.context.operationId,
+                parameters: item.context.parameters,
+                requestBody: item.context.requestBody,
+                responses: item.context.responses,
+                deprecated: item.context.deprecated,
+                ...(item.context.security && { security: item.context.security })
             };
+            // Remove undefined values
+            Object.keys(result).forEach(key => result[key] === undefined && delete result[key]);
+            return result;
         });
     }
     formatParameters(parameters) {

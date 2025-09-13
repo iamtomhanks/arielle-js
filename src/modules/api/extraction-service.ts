@@ -115,7 +115,34 @@ export class ExtractionService {
   /**
    * Format the extracted information for embedding
    */
-  formatForEmbedding(extracted: ExtractedEndpointInfo[]): Array<{id: string; content: string}> {
+  formatForEmbedding(extracted: ExtractedEndpointInfo[]): Array<{
+    id: string;
+    content: string;
+    method: string;
+    path: string;
+    summary?: string;
+    description?: string;
+    tags?: string[];
+    operationId?: string;
+    parameters?: Array<{
+      name: string;
+      in: string;
+      description?: string;
+      required: boolean;
+      schema?: any;
+    }>;
+    requestBody?: {
+      description?: string;
+      required?: boolean;
+      content?: Record<string, any>;
+    };
+    responses?: Record<string, {
+      description: string;
+      content?: Record<string, any>;
+    }>;
+    deprecated?: boolean;
+    security?: any[];
+  }> {
     return extracted.map(item => {
       // Create a more structured content
       const sections = [
@@ -127,26 +154,32 @@ export class ExtractionService {
         ...(item.context.responses ? ['## Responses', ...this.formatResponses(item.context.responses)] : [])
       ];
       
-      // Only add context if there's more than just the basic info
-      const hasAdditionalContext = Object.keys(item.context).length > 3; // More than just tags, operationId, deprecated
-      if (hasAdditionalContext) {
-        sections.push(
-          '## Technical Details',
-          '```json',
-          JSON.stringify({
-            operationId: item.context.operationId,
-            tags: item.context.tags,
-            deprecated: item.context.deprecated,
-            ...(item.context.security ? { security: item.context.security } : {})
-          }, null, 2),
-          '```'
-        );
-      }
+      // Extract the first line of the description as a summary if available
+      const summary = item.what.length > 0 
+        ? item.what[0].replace('**Summary**: ', '')
+        : undefined;
       
-      return {
+      // Prepare the base return object with all extracted properties
+      const result: any = {
         id: item.id,
-        content: sections.join('\n\n')
+        content: sections.join('\n\n'),
+        method: item.method,
+        path: item.path,
+        summary,
+        description: item.context.description,
+        tags: item.context.tags,
+        operationId: item.context.operationId,
+        parameters: item.context.parameters,
+        requestBody: item.context.requestBody,
+        responses: item.context.responses,
+        deprecated: item.context.deprecated,
+        ...(item.context.security && { security: item.context.security })
       };
+      
+      // Remove undefined values
+      Object.keys(result).forEach(key => result[key] === undefined && delete result[key]);
+      
+      return result;
     });
   }
   

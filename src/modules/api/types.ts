@@ -82,3 +82,74 @@ export interface APIInfo {
   /** Terms of service URL if available */
   termsOfService?: string;
 }
+
+export interface ExtractedEndpointInfo {
+  // Core identification
+  id: string;
+  method: string;
+  path: string;
+  
+  // Human-readable descriptions
+  what: string[];
+  why: string[];
+  
+  // Context and metadata
+  context: {
+    // Standard OpenAPI fields
+    tags: string[];
+    operationId?: string;
+    deprecated: boolean;
+    description?: string;
+    
+    // Request information
+    parameters?: Array<{
+      name: string;
+      in: string;
+      description?: string;
+      required: boolean;
+      schema?: any;
+    }>;
+    
+    requestBody?: {
+      description?: string;
+      required?: boolean;
+      content?: Record<string, any>;
+    };
+    
+    // Response information
+    responses?: Record<string, {
+      description: string;
+      content?: Record<string, any>;
+    }>;
+    
+    // Security
+    security?: any[];
+    
+    // Allow additional properties
+    [key: string]: any;
+  };
+  
+  // Additional fields added for embedding
+  summary?: string;
+  description?: string;
+  tags?: string[];
+  operationId?: string;
+  parameters?: Array<{
+    name: string;
+    in: string;
+    description?: string;
+    required: boolean;
+    schema?: any;
+  }>;
+  requestBody?: {
+    description?: string;
+    required?: boolean;
+    content?: Record<string, any>;
+  };
+  responses?: Record<string, {
+    description: string;
+    content?: Record<string, any>;
+  }>;
+  deprecated?: boolean;
+  security?: any[];
+}

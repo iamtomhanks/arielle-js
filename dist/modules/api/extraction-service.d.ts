@@ -28,6 +28,30 @@ export declare class ExtractionService {
     formatForEmbedding(extracted: ExtractedEndpointInfo[]): Array<{
         id: string;
         content: string;
+        method: string;
+        path: string;
+        summary?: string;
+        description?: string;
+        tags?: string[];
+        operationId?: string;
+        parameters?: Array<{
+            name: string;
+            in: string;
+            description?: string;
+            required: boolean;
+            schema?: any;
+        }>;
+        requestBody?: {
+            description?: string;
+            required?: boolean;
+            content?: Record<string, any>;
+        };
+        responses?: Record<string, {
+            description: string;
+            content?: Record<string, any>;
+        }>;
+        deprecated?: boolean;
+        security?: any[];
     }>;
     private formatParameters;
     private formatRequestBody;

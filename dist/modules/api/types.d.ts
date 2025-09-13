@@ -62,3 +62,56 @@ export interface APIInfo {
     /** Terms of service URL if available */
     termsOfService?: string;
 }
+export interface ExtractedEndpointInfo {
+    id: string;
+    method: string;
+    path: string;
+    what: string[];
+    why: string[];
+    context: {
+        tags: string[];
+        operationId?: string;
+        deprecated: boolean;
+        description?: string;
+        parameters?: Array<{
+            name: string;
+            in: string;
+            description?: string;
+            required: boolean;
+            schema?: any;
+        }>;
+        requestBody?: {
+            description?: string;
+            required?: boolean;
+            content?: Record<string, any>;
+        };
+        responses?: Record<string, {
+            description: string;
+            content?: Record<string, any>;
+        }>;
+        security?: any[];
+        [key: string]: any;
+    };
+    summary?: string;
+    description?: string;
+    tags?: string[];
+    operationId?: string;
+    parameters?: Array<{
+        name: string;
+        in: string;
+        description?: string;
+        required: boolean;
+        schema?: any;
+    }>;
+    requestBody?: {
+        description?: string;
+        required?: boolean;
+        content?: Record<string, any>;
+    };
+    responses?: Record<string, {
+        description: string;
+        content?: Record<string, any>;
+    }>;
+    deprecated?: boolean;
+    security?: any[];
+}
