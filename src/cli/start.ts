@@ -85,13 +85,14 @@ export const startCommand = new Command('start')
 
           // Extract and save to JSON
           updateSpinnerText(spinner, 'Extracting endpoint information...');
-          const outputPath = await extractAndSaveToJSON({
+          const { outputPath, extractedInfo } = await extractAndSaveToJSON({
             endpoints,
             apiService,
             spinner,
           });
 
           // Phase 3 - Vector database integration
+          // extractedInfo is now available if needed for further processing
 
           succeedSpinner(spinner, `Extraction complete. Saved to ${outputPath}`);
 

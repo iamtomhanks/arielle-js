@@ -3,6 +3,11 @@ import * as path from 'path';
 import type { APIService } from '../../../modules/api/api-service.js';
 import { generateTimestampFilename, saveToJsonFile } from '../../../utils/file-utils.js';
 
+interface ExtractAndSaveToJSONResult {
+  outputPath: string;
+  extractedInfo: any; // Consider replacing 'any' with a more specific type
+}
+
 interface ExtractAndSaveToJSONParams {
   endpoints: any[];
   apiService: APIService;
@@ -15,7 +20,7 @@ export async function extractAndSaveToJSON({
   apiService,
   outputDir = process.cwd(),
   spinner,
-}: ExtractAndSaveToJSONParams): Promise<string> {
+}: ExtractAndSaveToJSONParams): Promise<ExtractAndSaveToJSONResult> {
   // Extract endpoint information
   const extractedInfo = apiService.extractEndpointInfo(endpoints);
 
@@ -28,5 +33,8 @@ export async function extractAndSaveToJSON({
     pretty: true,
   });
 
-  return outputPath;
+  return {
+    outputPath,
+    extractedInfo
+  };
 }
