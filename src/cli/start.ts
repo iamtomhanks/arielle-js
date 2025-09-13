@@ -8,12 +8,21 @@ import { withErrorHandling } from '../utils/error-handler.js';
 import { APIService } from '../modules/api/api-service.js';
 import { InteractionService } from '../modules/cli/interaction-service.js';
 import { saveToJsonFile, generateTimestampFilename } from '../utils/file-utils.js';
+import { 
+  indexEndpoints, 
+  clearCollection, 
+  semanticSearch,
+  type IndexedEndpoint 
+} from '../vector/index.js';
 import type { OpenAPIV3 } from 'openapi-types';
 
 interface StartOptions {
   verbose: boolean;
   spec?: string;
   output?: string;
+  clearCache?: boolean;
+  vector?: boolean;
+  search?: string;
 }
 
 interface ProcessedEndpoint {
@@ -29,6 +38,9 @@ export const startCommand = new Command('start')
   .option('--verbose', 'Enable verbose logging', false)
   .option('-s, --spec <path>', 'Path or URL to OpenAPI specification (YAML/JSON)')
   .option('-o, --output <path>', 'Output directory for processed data')
+  .option('--no-vector', 'Disable vector database indexing', false)
+  .option('--clear-cache', 'Clear existing vector database cache', false)
+  .option('--search <query>', 'Search for endpoints matching the query')
   .action(async (options: StartOptions) => {
     // Show beautiful banner - this includes the welcome message
     UI.showBanner();
@@ -92,6 +104,76 @@ export const startCommand = new Command('start')
           });
           
           spinner.succeed(chalk.green('✓ ') + `Extraction complete. Saved to ${outputPath}`);
+          
+          // Vector database operations
+          if (options.vector !== false) {
+            try {
+              // Clear existing data if requested
+              if (options.clearCache) {
+                spinner = ora(chalk.dim('Clearing vector database...')).start();
+                await clearCollection();
+                spinner.succeed(chalk.green('✓ ') + 'Vector database cleared');
+              }
+              
+              // Prepare endpoints for indexing
+              const indexedEndpoints: IndexedEndpoint[] = endpoints.map(endpoint => ({
+                id: `${endpoint.path}:${endpoint.method}`.toLowerCase(),
+                path: endpoint.path,
+                method: endpoint.method,
+                operationId: endpoint.operationId,
+                tags: endpoint.tags,
+                nlpText: [
+                  endpoint.path,
+                  endpoint.method,
+                  endpoint.summary || '',
+                  endpoint.description || '',
+                  ...(endpoint.parameters?.map(p => `${p.name} ${p.description || ''}`) || [])
+                ].join(' ').trim(),
+                metadata: {
+                  ...endpoint,
+                  timestamp: new Date().toISOString()
+                }
+              }));
+              
+              // Index endpoints
+              await indexEndpoints(indexedEndpoints, (progress, total) => {
+                const percent = Math.round((progress / total) * 100);
+                if (spinner) {
+                  spinner.text = `Indexing endpoints... ${progress}/${total} (${percent}%)`;
+                }
+              });
+              
+              // If a search query was provided, perform a search
+              if (options.search) {
+                spinner = ora(chalk.dim(`Searching for "${options.search}"...`)).start();
+                const searchResults = await semanticSearch(options.search, { limit: 5 });
+                spinner?.stop();
+                
+                if (searchResults.length > 0) {
+                  console.log('\n' + chalk.bold('Search Results:'));
+                  searchResults.forEach((result, index) => {
+                    console.log(`
+${chalk.cyan(`${index + 1}. [${result.method.toUpperCase()}] ${result.path}`)}`);
+                    if (result.operationId) {
+                      console.log(`   Operation: ${chalk.yellow(result.operationId)}`);
+                    }
+                    console.log(`   Score: ${chalk.green(result.score.toFixed(3))}`);
+                    if (result.tags?.length) {
+                      console.log(`   Tags: ${result.tags.map(t => chalk.blue(t)).join(', ')}`);
+                    }
+                  });
+                } else {
+                  console.log('\n' + chalk.yellow('No matching endpoints found.'));
+                }
+              }
+              
+            } catch (error) {
+              if (spinner) spinner.fail('Vector database operation failed');
+              logger.error('Vector database error:', error);
+              if (options.verbose) console.error(error);
+              // Continue with the rest of the process even if vector operations fail
+            }
+          }
           
           interactionService.displayCompletionMessage();
 
