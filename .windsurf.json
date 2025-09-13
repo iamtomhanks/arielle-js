@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json.schemastore.org/windsurf.json",
+  "name": "ArielleJS Workspace",
+  "description": "Configuration for ArielleJS development environment",
+  "rules": {
+    "enforceEsmImports": true,
+    "requireFileExtensions": {
+      "enabled": false
+    },
+    "enforceTypeImports": true,
+    "enforceNodeProtocolImports": true,
+    "enforceNoConsoleLogs": {
+      "enabled": true,
+      "allowedMethods": ["log", "warn", "error", "info"]
+    },
+    "enforceErrorHandling": {
+      "enabled": true,
+      "requireTryCatch": true
+    },
+    "enforceTypeSafety": {
+      "enabled": true,
+      "strictNullChecks": true,
+      "noImplicitAny": true,
+      "strictFunctionTypes": true
+    },
+    "enforceModuleBoundaries": {
+      "enabled": true,
+      "rules": [
+        {
+          "from": "src/cli/*",
+          "to": ["src/utils/*", "src/types/*"]
+        },
+        {
+          "from": "src/utils/*",
+          "to": ["src/types/*"]
+        }
+      ]
+    }
+  },
+  "autoFixOnSave": {
+    "enabled": true,
+    "include": ["**/*.{ts,js,json}"],
+    "exclude": ["node_modules/**", "dist/**"]
+  },
+  "codeActionsOnSave": {
+    "source.organizeImports": true,
+    "source.fixAll.eslint": true
+  },
+  "editor": {
+    "formatOnSave": true,
+    "codeLens": true,
+    "suggest": {
+      "autoImports": true
+    }
+  },
+  "typescript": {
+    "tsdk": "node_modules/typescript/lib",
+    "preferences": {
+      "importModuleSpecifierEnding": "js",
+      "importModuleSpecifierPreference": "relative"
+    }
+  },
+  "formatOnSave": {
+    "enabled": true,
+    "formatter": "prettier"
+  },
+  "lintOnSave": {
+    "enabled": true,
+    "linter": "eslint"
+  },
+  "typeChecking": {
+    "enabled": true,
+    "include": ["src/**/*.ts"],
+    "exclude": ["node_modules/**", "dist/**"]
+  },
+  "fileNamingConvention": {
+    "enabled": true,
+    "pattern": "kebab-case",
+    "exceptions": [
+      "README.md",
+      "tsconfig.json",
+      "package.json",
+      ".eslintrc.js",
+      ".prettierrc",
+      ".gitignore"
+    ]
+  },
+  "importOrder": {
+    "enabled": true,
+    "groups": [
+      "builtin",
+      "external",
+      "internal",
+      "parent",
+      "sibling",
+      "index",
+      "types"
+    ],
+    "newlinesBetween": "always"
+  },
+  "documentation": {
+    "requireJSDoc": {
+      "enabled": true,
+      "include": ["src/**/*.ts"],
+      "exclude": ["**/*.d.ts", "**/__tests__/**"],
+      "rules": {
+        "require-param": true,
+        "require-returns": true,
+        "require-description": true
+      }
+    },
+    "requireReadme": true,
+    "requireTypeDoc": {
+      "enabled": true,
+      "include": ["src/**/*.ts"],
+      "exclude": ["**/*.d.ts", "**/__tests__/**"]
+    }
+  },
+  "testing": {
+    "framework": "jest",
+    "coverage": {
+      "enabled": true,
+      "reportsDirectory": "coverage"
+    },
+    "watchMode": true
+  },
+  "tasks": {
+    "build": {
+      "command": "npm run build",
+      "problemMatcher": ["$tsc"]
+    },
+    "lint": {
+      "command": "npm run lint",
+      "problemMatcher": ["$eslint-stylish"]
+    },
+    "test": {
+      "command": "npm test",
+      "problemMatcher": ["$tsc"]
+    }
+  },
+  "security": {
+    "enforceHttpsImports": true,
+    "disallowEval": true,
+    "disallowNonLiteralRequire": true
+  },
+  "performance": {
+    "warnLargeFiles": {
+      "enabled": true,
+      "maxSizeKB": 200
+    },
+    "warnComplexLogic": {
+      "enabled": true,
+      "maxComplexity": 10
+    }
+  }
+}
