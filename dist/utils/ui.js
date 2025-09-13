@@ -19,14 +19,22 @@ const BOXEN_OPTS = {
 };
 export class UI {
     static showBanner() {
-        const gradientBanner = gradient('#00ffff', '#ff00ff')(BANNER_TEXT);
-        const bannerBox = boxen(gradientBanner, {
-            ...BOXEN_OPTS,
-            title: 'OpenAPI Companion',
-            titleAlignment: 'center',
-        });
-        console.clear();
-        console.log('\n' + bannerBox + '\n');
+        try {
+            const gradientBanner = gradient('#00ffff', '#ff00ff')(BANNER_TEXT);
+            const bannerBox = boxen(gradientBanner, {
+                ...BOXEN_OPTS,
+                title: 'OpenAPI Companion',
+                titleAlignment: 'center',
+            });
+            // Clear the console first
+            process.stdout.write('\x1Bc');
+            // Then write the banner
+            process.stdout.write('\n' + bannerBox + '\n\n');
+        }
+        catch (error) {
+            // Fallback to a simpler banner if there's an error
+            console.log('\n' + chalk.cyan.bold('ARIELLE JS - OpenAPI Companion') + '\n');
+        }
     }
     static section(title) {
         console.log('\n' + chalk.cyan.bold(`› ${title.toUpperCase()}`) + '\n');

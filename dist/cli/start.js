@@ -22,16 +22,12 @@ export const startCommand = new Command('start')
     }
     // Initialize logger with verbosity
     const logger = Logger.getInstance(options.verbose);
-    // Show welcome message
-    UI.section('Welcome to ArielleJS');
-    UI.info('The OpenAPI companion for your API development workflow\n');
     await withErrorHandling(async () => {
-        let spinner = ora('Initializing ArielleJS...').start();
+        let spinner = null;
+        let specPath = options.spec;
         try {
             // Get OpenAPI spec path if not provided
-            let specPath = options.spec;
             if (!specPath) {
-                // No need to stop spinner here since we haven't started it yet
                 UI.section('OpenAPI Specification');
                 UI.info('Please provide the path or URL to your OpenAPI specification file (YAML/JSON)');
                 const answers = await inquirer.prompt([
@@ -49,7 +45,7 @@ export const startCommand = new Command('start')
             }
             // Start spinner after we have the spec path
             spinner = ora({
-                text: chalk.dim('Initializing ArielleJS...'),
+                text: chalk.dim('Processing OpenAPI specification...'),
                 color: 'cyan',
             }).start();
             logger.debug('Starting ArielleJS in verbose mode');
