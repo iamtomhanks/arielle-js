@@ -23,7 +23,7 @@ export const startCommand = new Command('start')
   .option('-s, --spec <path>', 'Path or URL to OpenAPI specification (YAML/JSON)')
   .option('-o, --output <path>', 'Output directory for processed data')
   .action(async (options: StartOptions) => {
-    // Show beautiful banner
+    // Show beautiful banner - this includes the welcome message
     UI.showBanner();
 
     if (options.verbose) {
