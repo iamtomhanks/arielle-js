@@ -1,5 +1,5 @@
-import inquirer from 'inquirer';
 import chalk from 'chalk';
+import inquirer from 'inquirer';
 import { UI } from '../../utils/ui.js';
 export class InteractionService {
     async promptForSpecPath() {
@@ -50,7 +50,8 @@ export class InteractionService {
                     case 'patch':
                         coloredMethod = chalk.magenta.bold(endpoint.method.padEnd(6));
                         break;
-                    default: coloredMethod = chalk.white.bold(endpoint.method.padEnd(6));
+                    default:
+                        coloredMethod = chalk.white.bold(endpoint.method.padEnd(6));
                 }
                 console.log(`  ${coloredMethod} ${endpoint.path}`);
                 if (endpoint.summary) {
@@ -64,7 +65,7 @@ export class InteractionService {
     }
     displayCompletionMessage() {
         UI.divider();
-        UI.section('Next Steps');
+        UI.section('Next Steps baby');
         console.log(chalk.green('✓ ') + 'Your API has been successfully analyzed');
         console.log(chalk.yellow('! ') + 'Vector database integration coming in Phase 3');
         console.log('\n' + chalk.dim('Run with --verbose for detailed logging'));

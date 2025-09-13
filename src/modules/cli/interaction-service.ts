@@ -1,5 +1,5 @@
-import inquirer from 'inquirer';
 import chalk from 'chalk';
+import inquirer from 'inquirer';
 import { UI } from '../../utils/ui.js';
 
 export class InteractionService {
@@ -39,7 +39,7 @@ export class InteractionService {
 
   displayEndpoints(endpointsByTag: Record<string, any[]>) {
     UI.section('API Endpoints');
-    
+
     for (const [tag, tagEndpoints] of Object.entries(endpointsByTag)) {
       console.log(`\n${chalk.cyan.bold(tag)} (${tagEndpoints.length} endpoints)`);
 
@@ -48,12 +48,23 @@ export class InteractionService {
         let coloredMethod: string;
 
         switch (method) {
-          case 'get': coloredMethod = chalk.green.bold(endpoint.method.padEnd(6)); break;
-          case 'post': coloredMethod = chalk.blue.bold(endpoint.method.padEnd(6)); break;
-          case 'put': coloredMethod = chalk.yellow.bold(endpoint.method.padEnd(6)); break;
-          case 'delete': coloredMethod = chalk.red.bold(endpoint.method.padEnd(6)); break;
-          case 'patch': coloredMethod = chalk.magenta.bold(endpoint.method.padEnd(6)); break;
-          default: coloredMethod = chalk.white.bold(endpoint.method.padEnd(6));
+          case 'get':
+            coloredMethod = chalk.green.bold(endpoint.method.padEnd(6));
+            break;
+          case 'post':
+            coloredMethod = chalk.blue.bold(endpoint.method.padEnd(6));
+            break;
+          case 'put':
+            coloredMethod = chalk.yellow.bold(endpoint.method.padEnd(6));
+            break;
+          case 'delete':
+            coloredMethod = chalk.red.bold(endpoint.method.padEnd(6));
+            break;
+          case 'patch':
+            coloredMethod = chalk.magenta.bold(endpoint.method.padEnd(6));
+            break;
+          default:
+            coloredMethod = chalk.white.bold(endpoint.method.padEnd(6));
         }
 
         console.log(`  ${coloredMethod} ${endpoint.path}`);
@@ -70,7 +81,7 @@ export class InteractionService {
 
   displayCompletionMessage() {
     UI.divider();
-    UI.section('Next Steps');
+    UI.section('Next Steps baby');
     console.log(chalk.green('✓ ') + 'Your API has been successfully analyzed');
     console.log(chalk.yellow('! ') + 'Vector database integration coming in Phase 3');
     console.log('\n' + chalk.dim('Run with --verbose for detailed logging'));

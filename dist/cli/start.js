@@ -1,18 +1,18 @@
 import { Command } from 'commander';
-import ora from 'ora';
-import chalk from 'chalk';
-import path from 'path';
-import { UI } from '../utils/ui.js';
-import { Logger } from '../utils/logger.js';
-import { withErrorHandling } from '../utils/error-handler.js';
 import { APIService } from '../modules/api/api-service.js';
 import { InteractionService } from '../modules/cli/interaction-service.js';
-import { saveToJsonFile, generateTimestampFilename } from '../utils/file-utils.js';
+import { withErrorHandling } from '../utils/error-handler.js';
+import { Logger } from '../utils/logger.js';
+import { UI } from '../utils/ui.js';
+import { createProcessingSpinner, displayRawResults, extractAndSaveToJSON, getOpenAPISpecPath, loadAndValidateSpec, succeedSpinner, updateSpinnerText, } from './steps/open-api-spec-parsing/index.js';
 export const startCommand = new Command('start')
     .description('Start the ArielleJS wizard')
     .option('--verbose', 'Enable verbose logging', false)
     .option('-s, --spec <path>', 'Path or URL to OpenAPI specification (YAML/JSON)')
     .option('-o, --output <path>', 'Output directory for processed data')
+    .option('--no-vector', 'Disable vector database indexing', false)
+    .option('--clear-cache', 'Clear existing vector database cache', false)
+    .option('--search <query>', 'Search for endpoints matching the query')
     .action(async (options) => {
     // Show beautiful banner - this includes the welcome message
     UI.showBanner();
@@ -28,41 +28,32 @@ export const startCommand = new Command('start')
         let spinner = null;
         let specPath = options.spec;
         try {
-            // Get OpenAPI spec path if not provided
-            if (!specPath) {
-                specPath = await interactionService.promptForSpecPath();
-            }
+            // Get OpenAPI spec path
+            specPath = await getOpenAPISpecPath({ specPath, interactionService });
             // Start processing
-            spinner = ora({
-                text: chalk.dim('Processing OpenAPI specification...'),
-                color: 'cyan',
-            }).start();
+            spinner = createProcessingSpinner('Processing OpenAPI specification...');
             // Load and validate the spec
-            spinner.text = chalk.dim('Loading OpenAPI specification...');
-            const spec = await apiService.loadAndValidateSpec(specPath);
-            // Display API information
-            spinner.succeed(chalk.green('✓ ') + 'Specification loaded');
-            const apiInfo = apiService.getAPIInfo(spec);
-            interactionService.displayAPIInfo(apiInfo);
-            // Process endpoints
-            spinner = ora(chalk.dim('Processing API endpoints...')).start();
-            const endpoints = apiService.processEndpoints(spec);
-            const endpointsByTag = apiService.groupEndpointsByTag(endpoints);
-            spinner.succeed(chalk.green('✓ ') + `Processed ${endpoints.length} endpoints`);
-            // Display results
-            interactionService.displayEndpoints(endpointsByTag);
-            // Extract and save endpoint information
-            spinner = ora(chalk.dim('Extracting endpoint information...')).start();
-            const extractedInfo = apiService.extractEndpointInfo(endpoints);
-            // Save to JSON file
-            const outputDir = path.resolve(process.cwd(), 'phase2-output');
-            const filename = generateTimestampFilename('api-extraction');
-            const outputPath = await saveToJsonFile(filename, extractedInfo, {
-                outputDir,
-                createDir: true,
-                pretty: true
+            updateSpinnerText(spinner, 'Loading OpenAPI specification...');
+            const spec = await loadAndValidateSpec({
+                specPath,
+                apiService,
             });
-            spinner.succeed(chalk.green('✓ ') + `Extraction complete. Saved to ${outputPath}`);
+            // Display success message
+            succeedSpinner(spinner, 'Specification loaded');
+            // Process and display results
+            const { endpoints } = displayRawResults({
+                spec,
+                apiService,
+                interactionService,
+            });
+            // Extract and save to JSON
+            updateSpinnerText(spinner, 'Extracting endpoint information...');
+            const outputPath = await extractAndSaveToJSON({
+                endpoints,
+                apiService,
+                spinner,
+            });
+            succeedSpinner(spinner, `Extraction complete. Saved to ${outputPath}`);
             interactionService.displayCompletionMessage();
         }
         catch (error) {
