@@ -17,37 +17,32 @@ export const startCommand = new Command('start')
     // Initialize logger with verbosity
     const logger = Logger.getInstance(options.verbose);
     await withErrorHandling(async () => {
-        const spinner = ora('Initializing ArielleJS...').start();
+        // Don't start spinner yet as it will interfere with inquirer
+        let spinner = null;
         try {
-            logger.debug('Starting ArielleJS in verbose mode');
             // Get OpenAPI spec path if not provided
             let specPath = options.spec;
-            console.log('Spec path from options:', specPath);
             if (!specPath) {
-                console.log('No spec path provided, prompting user...');
-                try {
-                    const answers = await inquirer.prompt([{
-                            type: 'input',
-                            name: 'specPath',
-                            message: 'Enter the path or URL to your OpenAPI specification (YAML/JSON):',
-                            validate: (input) => {
-                                console.log('Validating input:', input);
-                                return input.trim() ? true : 'Please enter a valid path or URL';
-                            }
-                        }]);
-                    specPath = answers.specPath;
-                    console.log('User provided spec path:', specPath);
-                }
-                catch (error) {
-                    console.error('Error during inquirer prompt:', error);
-                    throw error;
-                }
+                // No need to stop spinner here since we haven't started it yet
+                const answers = await inquirer.prompt([{
+                        type: 'input',
+                        name: 'specPath',
+                        message: 'Enter the path or URL to your OpenAPI specification (YAML/JSON):',
+                        validate: (input) => {
+                            return input.trim() ? true : 'Please enter a valid path or URL';
+                        }
+                    }]);
+                specPath = answers.specPath;
             }
+            // Start spinner after we have the spec path
+            spinner = ora('Initializing ArielleJS...').start();
+            logger.debug('Starting ArielleJS in verbose mode');
             // Load and validate the OpenAPI spec
             spinner.text = 'Loading OpenAPI specification...';
             if (!specPath) {
                 const error = new Error('No OpenAPI specification path provided');
-                console.error(error.message);
+                if (spinner)
+                    spinner.fail(error.message);
                 throw error;
             }
             console.log('Loading spec from path:', specPath);
@@ -96,8 +91,15 @@ export const startCommand = new Command('start')
             console.log('\n' + chalk.yellow('Note: Vector database integration will be added in Phase 3'));
         }
         catch (error) {
-            spinner.fail('Failed to complete ArielleJS wizard');
+            if (spinner) {
+                spinner.fail('Failed to complete ArielleJS wizard');
+            }
             throw error;
+        }
+        finally {
+            if (spinner) {
+                spinner.stop();
+            }
         }
     }, {
         showStack: options.verbose,
