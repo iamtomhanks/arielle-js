@@ -94,7 +94,11 @@ export const startCommand = new Command('start')
 
           // Phase 3 - Vector database integration
           updateSpinnerText(spinner, 'Uploading to vector database...');
-          await uploadToVectorDB('openapi-spec-docs', extractedInfo, options.verbose);
+          const uploadSuccess = await uploadToVectorDB('openapi-spec-docs', extractedInfo, options.verbose);
+          
+          if (!uploadSuccess) {
+            logger.warn('Vector database upload had issues, but continuing with file export...');
+          }
 
           succeedSpinner(spinner, `Extraction complete. Saved to ${outputPath}`);
 
