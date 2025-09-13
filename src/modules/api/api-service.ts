@@ -84,6 +84,43 @@ export class APIService {
       
       if (!operation) return endpoint as ProcessedEndpoint;
       
+      // Get all parameters (both path and operation level)
+      const pathParameters = Array.isArray(pathItem.parameters) ? pathItem.parameters : [];
+      const operationParameters = Array.isArray(operation.parameters) ? operation.parameters : [];
+      const allParameters = [...pathParameters, ...operationParameters] as OpenAPIV3.ParameterObject[];
+      
+      // Format parameters
+      const formattedParameters = allParameters.map(param => ({
+        name: param.name,
+        in: param.in,
+        description: param.description,
+        required: param.required || false,
+        schema: param.schema
+      }));
+      
+      // Format request body if exists
+      let requestBody = undefined;
+      if (operation.requestBody) {
+        const requestBodyObj = operation.requestBody as OpenAPIV3.RequestBodyObject;
+        requestBody = {
+          description: requestBodyObj.description,
+          content: requestBodyObj.content,
+          required: requestBodyObj.required
+        };
+      }
+      
+      // Format responses
+      const responses: Record<string, any> = {};
+      if (operation.responses) {
+        Object.entries(operation.responses).forEach(([status, response]) => {
+          const responseObj = response as OpenAPIV3.ResponseObject;
+          responses[status] = {
+            description: responseObj.description || '',
+            content: responseObj.content || {}
+          };
+        });
+      }
+      
       // Create enhanced endpoint with all available information
       const enhancedEndpoint: ProcessedEndpoint = {
         ...endpoint,
@@ -93,8 +130,9 @@ export class APIService {
         security: operation.security as OpenAPIV3.SecurityRequirementObject[],
         servers: operation.servers,
         externalDocs: operation.externalDocs,
-        parameters: [],
-        responses: {}
+        parameters: formattedParameters,
+        requestBody,
+        responses
       };
 
       // Add parameters with descriptions

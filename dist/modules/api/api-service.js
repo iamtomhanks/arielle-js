@@ -68,6 +68,39 @@ export class APIService {
             const operation = pathItem[method];
             if (!operation)
                 return endpoint;
+            // Get all parameters (both path and operation level)
+            const pathParameters = Array.isArray(pathItem.parameters) ? pathItem.parameters : [];
+            const operationParameters = Array.isArray(operation.parameters) ? operation.parameters : [];
+            const allParameters = [...pathParameters, ...operationParameters];
+            // Format parameters
+            const formattedParameters = allParameters.map(param => ({
+                name: param.name,
+                in: param.in,
+                description: param.description,
+                required: param.required || false,
+                schema: param.schema
+            }));
+            // Format request body if exists
+            let requestBody = undefined;
+            if (operation.requestBody) {
+                const requestBodyObj = operation.requestBody;
+                requestBody = {
+                    description: requestBodyObj.description,
+                    content: requestBodyObj.content,
+                    required: requestBodyObj.required
+                };
+            }
+            // Format responses
+            const responses = {};
+            if (operation.responses) {
+                Object.entries(operation.responses).forEach(([status, response]) => {
+                    const responseObj = response;
+                    responses[status] = {
+                        description: responseObj.description || '',
+                        content: responseObj.content || {}
+                    };
+                });
+            }
             // Create enhanced endpoint with all available information
             const enhancedEndpoint = {
                 ...endpoint,
@@ -77,8 +110,9 @@ export class APIService {
                 security: operation.security,
                 servers: operation.servers,
                 externalDocs: operation.externalDocs,
-                parameters: [],
-                responses: {}
+                parameters: formattedParameters,
+                requestBody,
+                responses
             };
             // Add parameters with descriptions
             if (operation.parameters || pathItem.parameters) {

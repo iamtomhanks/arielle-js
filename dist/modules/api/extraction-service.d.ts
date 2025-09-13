@@ -29,5 +29,10 @@ export declare class ExtractionService {
         id: string;
         content: string;
     }>;
+    private formatParameters;
+    private formatRequestBody;
+    private formatResponses;
+    private formatSchema;
+    private determineEndpointPurpose;
 }
 export {};
