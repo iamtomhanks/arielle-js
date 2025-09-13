@@ -1,11 +1,12 @@
 import type { Ora } from 'ora';
 import * as path from 'path';
 import type { APIService } from '../../../modules/api/api-service.js';
+import { ExtractedEndpointInfoEmbeddingFormat } from '../../../modules/api/extraction-service.js';
 import { generateTimestampFilename, saveToJsonFile } from '../../../utils/file-utils.js';
 
 interface ExtractAndSaveToJSONResult {
   outputPath: string;
-  extractedInfo: any; // Consider replacing 'any' with a more specific type
+  extractedInfo: ExtractedEndpointInfoEmbeddingFormat[];
 }
 
 interface ExtractAndSaveToJSONParams {
@@ -35,6 +36,6 @@ export async function extractAndSaveToJSON({
 
   return {
     outputPath,
-    extractedInfo
+    extractedInfo,
   };
 }

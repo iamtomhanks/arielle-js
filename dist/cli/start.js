@@ -5,6 +5,7 @@ import { withErrorHandling } from '../utils/error-handler.js';
 import { Logger } from '../utils/logger.js';
 import { UI } from '../utils/ui.js';
 import { createProcessingSpinner, displayRawResults, extractAndSaveToJSON, getOpenAPISpecPath, loadAndValidateSpec, succeedSpinner, updateSpinnerText, } from './steps/open-api-spec-parsing/index.js';
+import { uploadToVectorDB } from './steps/vector-db-insert/uploadToVectorDB.js';
 export const startCommand = new Command('start')
     .description('Start the ArielleJS wizard')
     .option('--verbose', 'Enable verbose logging', false)
@@ -48,11 +49,13 @@ export const startCommand = new Command('start')
             });
             // Extract and save to JSON
             updateSpinnerText(spinner, 'Extracting endpoint information...');
-            const outputPath = await extractAndSaveToJSON({
+            const { outputPath, extractedInfo } = await extractAndSaveToJSON({
                 endpoints,
                 apiService,
                 spinner,
             });
+            // Phase 3 - Vector database integration
+            await uploadToVectorDB('openapi-spec-docs', extractedInfo);
             succeedSpinner(spinner, `Extraction complete. Saved to ${outputPath}`);
             interactionService.displayCompletionMessage();
         }

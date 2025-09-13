@@ -3,7 +3,7 @@ export class ExtractionService {
      * Extract "what" and "why" information from processed endpoints
      */
     extractEndpointInfo(endpoints) {
-        return endpoints.map(endpoint => {
+        return endpoints.map((endpoint) => {
             const info = {
                 id: this.generateEndpointId(endpoint),
                 method: endpoint.method,
@@ -15,8 +15,8 @@ export class ExtractionService {
                     operationId: endpoint.operationId,
                     deprecated: endpoint.deprecated || false,
                     method: endpoint.method,
-                    path: endpoint.path
-                }
+                    path: endpoint.path,
+                },
             };
             // Extract "what" information
             if (endpoint.summary) {
@@ -31,10 +31,13 @@ export class ExtractionService {
                 }
                 // Subsequent paragraphs are usually the "why"
                 if (paragraphs.length > 1) {
-                    info.why.push(...paragraphs.slice(1).map(p => {
+                    info.why.push(...paragraphs
+                        .slice(1)
+                        .map((p) => {
                         const trimmed = p.trim();
                         return trimmed.endsWith('.') ? trimmed : `${trimmed}.`;
-                    }).filter(Boolean));
+                    })
+                        .filter(Boolean));
                 }
             }
             // Add endpoint purpose based on HTTP method and path
@@ -44,7 +47,7 @@ export class ExtractionService {
             }
             // Extract parameter descriptions
             if (endpoint.parameters?.length) {
-                endpoint.parameters.forEach(param => {
+                endpoint.parameters.forEach((param) => {
                     if (param.description) {
                         info.what.push(`${param.name} (${param.in}): ${param.description}`);
                     }
@@ -76,26 +79,37 @@ export class ExtractionService {
         if (endpoint.operationId) {
             return endpoint.operationId;
         }
-        return `${endpoint.method.toLowerCase()}-${endpoint.path.replace(/[\{\}/]/g, '-').replace(/--+/g, '-').replace(/^-|-$/g, '')}`;
+        return `${endpoint.method.toLowerCase()}-${endpoint.path
+            .replace(/[\{\}/]/g, '-')
+            .replace(/--+/g, '-')
+            .replace(/^-|-$/g, '')}`;
     }
     /**
      * Format the extracted information for embedding
      */
     formatForEmbedding(extracted) {
-        return extracted.map(item => {
+        return extracted.map((item) => {
             // Create a more structured content
             const sections = [
                 `# ${item.method.toUpperCase()} ${item.path}`,
-                ...(item.what.length ? ['## What This Endpoint Does', ...item.what.map(w => `- ${w}`)] : []),
-                ...(item.why.length ? ['## Why This Endpoint Exists', ...item.why.map(w => `- ${w}`)] : []),
-                ...(item.context.parameters?.length ? ['## Parameters', ...this.formatParameters(item.context.parameters)] : []),
-                ...(item.context.requestBody ? ['## Request Body', this.formatRequestBody(item.context.requestBody)] : []),
-                ...(item.context.responses ? ['## Responses', ...this.formatResponses(item.context.responses)] : [])
+                ...(item.what.length
+                    ? ['## What This Endpoint Does', ...item.what.map((w) => `- ${w}`)]
+                    : []),
+                ...(item.why.length
+                    ? ['## Why This Endpoint Exists', ...item.why.map((w) => `- ${w}`)]
+                    : []),
+                ...(item.context.parameters?.length
+                    ? ['## Parameters', ...this.formatParameters(item.context.parameters)]
+                    : []),
+                ...(item.context.requestBody
+                    ? ['## Request Body', this.formatRequestBody(item.context.requestBody)]
+                    : []),
+                ...(item.context.responses
+                    ? ['## Responses', ...this.formatResponses(item.context.responses)]
+                    : []),
             ];
             // Extract the first line of the description as a summary if available
-            const summary = item.what.length > 0
-                ? item.what[0].replace('**Summary**: ', '')
-                : undefined;
+            const summary = item.what.length > 0 ? item.what[0].replace('**Summary**: ', '') : undefined;
             // Prepare the base return object with all extracted properties
             const result = {
                 id: item.id,
@@ -110,20 +124,20 @@ export class ExtractionService {
                 requestBody: item.context.requestBody,
                 responses: item.context.responses,
                 deprecated: item.context.deprecated,
-                ...(item.context.security && { security: item.context.security })
+                ...(item.context.security && { security: item.context.security }),
             };
             // Remove undefined values
-            Object.keys(result).forEach(key => result[key] === undefined && delete result[key]);
+            Object.keys(result).forEach((key) => result[key] === undefined && delete result[key]);
             return result;
         });
     }
     formatParameters(parameters) {
-        return parameters.map(param => {
+        return parameters.map((param) => {
             const parts = [
                 `- **${param.name}** (${param.in})`,
                 param.required ? '**[Required]**' : '',
                 param.description ? `\n  ${param.description}` : '',
-                param.schema ? `\n  Type: ${this.formatSchema(param.schema)}` : ''
+                param.schema ? `\n  Type: ${this.formatSchema(param.schema)}` : '',
             ];
             return parts.filter(Boolean).join(' ');
         });
@@ -147,10 +161,7 @@ export class ExtractionService {
     }
     formatResponses(responses) {
         return Object.entries(responses).map(([status, response]) => {
-            const parts = [
-                `- **${status}**`,
-                response.description ? `: ${response.description}` : ''
-            ];
+            const parts = [`- **${status}**`, response.description ? `: ${response.description}` : ''];
             if (response.content) {
                 parts.push('\n  **Response Content:**');
                 Object.entries(response.content).forEach(([contentType, content]) => {
@@ -177,13 +188,13 @@ export class ExtractionService {
     }
     determineEndpointPurpose(method, path) {
         const methodMap = {
-            'get': 'Retrieve',
-            'post': 'Create',
-            'put': 'Update or replace',
-            'patch': 'Partially update',
-            'delete': 'Remove',
-            'head': 'Check existence',
-            'options': 'Get supported operations'
+            get: 'Retrieve',
+            post: 'Create',
+            put: 'Update or replace',
+            patch: 'Partially update',
+            delete: 'Remove',
+            head: 'Check existence',
+            options: 'Get supported operations',
         };
         const pathParts = path.split('/').filter(Boolean);
         const resource = pathParts[0] || 'resource';

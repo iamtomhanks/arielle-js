@@ -1,12 +1,11 @@
-import { loadOpenAPI } from '../../openapi/loader.js';
-import { validateFullOpenAPISpec } from '../../openapi/validator.js';
-import { processOpenAPISpec } from '../../openapi/processor.js';
 import type { OpenAPIV3 } from 'openapi-types';
+import { loadOpenAPI } from '../../openapi/loader.js';
+import { processOpenAPISpec } from '../../openapi/processor.js';
 import type { OpenAPISpec } from '../../openapi/types.js';
+import { validateFullOpenAPISpec } from '../../openapi/validator.js';
 import { Logger } from '../../utils/logger.js';
+import { ExtractedEndpointInfoEmbeddingFormat, ExtractionService } from './extraction-service.js';
 import type { APIInfo, ProcessedEndpoint } from './types.js';
-import { ExtractionService } from './extraction-service.js';
-
 
 export class APIService {
   private logger: Logger;
@@ -17,7 +16,7 @@ export class APIService {
 
   async loadAndValidateSpec(specPath: string): Promise<OpenAPIV3.Document> {
     try {
-      const spec: OpenAPIV3.Document = await loadOpenAPI(specPath) as OpenAPIV3.Document;
+      const spec: OpenAPIV3.Document = (await loadOpenAPI(specPath)) as OpenAPIV3.Document;
       validateFullOpenAPISpec(spec as unknown as OpenAPISpec);
       return spec;
     } catch (error) {
@@ -31,7 +30,7 @@ export class APIService {
       title: spec.info?.title || 'Untitled API',
       version: spec.info?.version || '0.0.0',
       description: spec.info?.description || 'No description provided',
-      endpointCount: 0
+      endpointCount: 0,
     };
 
     // Count all endpoints
@@ -40,7 +39,7 @@ export class APIService {
         const pathItem = spec.paths[path];
         if (pathItem) {
           const methods = ['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace'];
-          info.endpointCount += methods.filter(m => (pathItem as any)[m]).length;
+          info.endpointCount += methods.filter((m) => (pathItem as any)[m]).length;
         }
       }
     }
@@ -50,7 +49,7 @@ export class APIService {
       info.contact = {
         name: spec.info.contact.name,
         url: spec.info.contact.url,
-        email: spec.info.contact.email
+        email: spec.info.contact.email,
       };
     }
 
@@ -58,7 +57,7 @@ export class APIService {
     if (spec.info?.license) {
       info.license = {
         name: spec.info.license.name,
-        url: spec.info.license.url
+        url: spec.info.license.url,
       };
     }
 
@@ -73,31 +72,34 @@ export class APIService {
   processEndpoints(spec: OpenAPIV3.Document): ProcessedEndpoint[] {
     // First get the basic endpoints
     const basicEndpoints = processOpenAPISpec(spec as any) as any[];
-    
+
     // Enhance with additional information
-    return basicEndpoints.map(endpoint => {
+    return basicEndpoints.map((endpoint) => {
       const pathItem = spec.paths?.[endpoint.path];
       if (!pathItem) return endpoint as ProcessedEndpoint;
-      
+
       const method = endpoint.method.toLowerCase();
       const operation = (pathItem as any)[method] as OpenAPIV3.OperationObject | undefined;
-      
+
       if (!operation) return endpoint as ProcessedEndpoint;
-      
+
       // Get all parameters (both path and operation level)
       const pathParameters = Array.isArray(pathItem.parameters) ? pathItem.parameters : [];
       const operationParameters = Array.isArray(operation.parameters) ? operation.parameters : [];
-      const allParameters = [...pathParameters, ...operationParameters] as OpenAPIV3.ParameterObject[];
-      
+      const allParameters = [
+        ...pathParameters,
+        ...operationParameters,
+      ] as OpenAPIV3.ParameterObject[];
+
       // Format parameters
-      const formattedParameters = allParameters.map(param => ({
+      const formattedParameters = allParameters.map((param) => ({
         name: param.name,
         in: param.in,
         description: param.description,
         required: param.required || false,
-        schema: param.schema
+        schema: param.schema,
       }));
-      
+
       // Format request body if exists
       let requestBody = undefined;
       if (operation.requestBody) {
@@ -105,10 +107,10 @@ export class APIService {
         requestBody = {
           description: requestBodyObj.description,
           content: requestBodyObj.content,
-          required: requestBodyObj.required
+          required: requestBodyObj.required,
         };
       }
-      
+
       // Format responses
       const responses: Record<string, any> = {};
       if (operation.responses) {
@@ -116,11 +118,11 @@ export class APIService {
           const responseObj = response as OpenAPIV3.ResponseObject;
           responses[status] = {
             description: responseObj.description || '',
-            content: responseObj.content || {}
+            content: responseObj.content || {},
           };
         });
       }
-      
+
       // Create enhanced endpoint with all available information
       const enhancedEndpoint: ProcessedEndpoint = {
         ...endpoint,
@@ -132,7 +134,7 @@ export class APIService {
         externalDocs: operation.externalDocs,
         parameters: formattedParameters,
         requestBody,
-        responses
+        responses,
       };
 
       // Add parameters with descriptions
@@ -142,12 +144,12 @@ export class APIService {
           ...(Array.isArray(operation.parameters) ? operation.parameters : []),
         ] as OpenAPIV3.ParameterObject[];
 
-        enhancedEndpoint.parameters = parameters.map(param => ({
+        enhancedEndpoint.parameters = parameters.map((param) => ({
           name: param.name,
           in: param.in,
           description: param.description,
           required: param.required || false,
-          schema: param.schema
+          schema: param.schema,
         }));
       }
 
@@ -156,7 +158,7 @@ export class APIService {
         const requestBody = operation.requestBody as OpenAPIV3.RequestBodyObject;
         enhancedEndpoint.requestBody = {
           description: requestBody.description,
-          content: requestBody.content
+          content: requestBody.content,
         };
       }
 
@@ -167,7 +169,7 @@ export class APIService {
           const responseObj = response as OpenAPIV3.ResponseObject;
           enhancedEndpoint.responses[statusCode] = {
             description: responseObj.description || '',
-            content: responseObj.content
+            content: responseObj.content,
           };
         }
       }
@@ -178,8 +180,8 @@ export class APIService {
 
   groupEndpointsByTag(endpoints: ProcessedEndpoint[]): Record<string, ProcessedEndpoint[]> {
     const grouped: Record<string, ProcessedEndpoint[]> = {};
-    
-    endpoints.forEach(endpoint => {
+
+    endpoints.forEach((endpoint) => {
       const tag = endpoint.tags?.[0] || 'Other';
       if (!grouped[tag]) {
         grouped[tag] = [];
@@ -195,7 +197,7 @@ export class APIService {
    * @param endpoints The processed endpoints to extract information from
    * @returns Formatted text ready for embedding
    */
-  extractEndpointInfo(endpoints: ProcessedEndpoint[]): Array<{id: string; content: string}> {
+  extractEndpointInfo(endpoints: ProcessedEndpoint[]): ExtractedEndpointInfoEmbeddingFormat[] {
     const extractionService = new ExtractionService();
     const extracted = extractionService.extractEndpointInfo(endpoints);
     return extractionService.formatForEmbedding(extracted);

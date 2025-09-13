@@ -1,4 +1,5 @@
 import type { OpenAPIV3 } from 'openapi-types';
+import { ExtractedEndpointInfoEmbeddingFormat } from './extraction-service.js';
 import type { APIInfo, ProcessedEndpoint } from './types.js';
 export declare class APIService {
     private logger;
@@ -12,9 +13,6 @@ export declare class APIService {
      * @param endpoints The processed endpoints to extract information from
      * @returns Formatted text ready for embedding
      */
-    extractEndpointInfo(endpoints: ProcessedEndpoint[]): Array<{
-        id: string;
-        content: string;
-    }>;
+    extractEndpointInfo(endpoints: ProcessedEndpoint[]): ExtractedEndpointInfoEmbeddingFormat[];
 }
 export default APIService;

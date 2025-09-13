@@ -11,5 +11,8 @@ export async function extractAndSaveToJSON({ endpoints, apiService, outputDir = 
         createDir: true,
         pretty: true,
     });
-    return outputPath;
+    return {
+        outputPath,
+        extractedInfo,
+    };
 }

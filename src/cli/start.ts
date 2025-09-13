@@ -14,6 +14,7 @@ import {
   succeedSpinner,
   updateSpinnerText,
 } from './steps/open-api-spec-parsing/index.js';
+import { uploadToVectorDB } from './steps/vector-db-insert/uploadToVectorDB.js';
 
 interface StartOptions {
   verbose: boolean;
@@ -92,7 +93,7 @@ export const startCommand = new Command('start')
           });
 
           // Phase 3 - Vector database integration
-          // extractedInfo is now available if needed for further processing
+          await uploadToVectorDB('openapi-spec-docs', extractedInfo);
 
           succeedSpinner(spinner, `Extraction complete. Saved to ${outputPath}`);
 

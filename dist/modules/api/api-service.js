@@ -1,6 +1,6 @@
 import { loadOpenAPI } from '../../openapi/loader.js';
-import { validateFullOpenAPISpec } from '../../openapi/validator.js';
 import { processOpenAPISpec } from '../../openapi/processor.js';
+import { validateFullOpenAPISpec } from '../../openapi/validator.js';
 import { Logger } from '../../utils/logger.js';
 import { ExtractionService } from './extraction-service.js';
 export class APIService {
@@ -9,7 +9,7 @@ export class APIService {
     }
     async loadAndValidateSpec(specPath) {
         try {
-            const spec = await loadOpenAPI(specPath);
+            const spec = (await loadOpenAPI(specPath));
             validateFullOpenAPISpec(spec);
             return spec;
         }
@@ -23,7 +23,7 @@ export class APIService {
             title: spec.info?.title || 'Untitled API',
             version: spec.info?.version || '0.0.0',
             description: spec.info?.description || 'No description provided',
-            endpointCount: 0
+            endpointCount: 0,
         };
         // Count all endpoints
         if (spec.paths) {
@@ -31,7 +31,7 @@ export class APIService {
                 const pathItem = spec.paths[path];
                 if (pathItem) {
                     const methods = ['get', 'post', 'put', 'delete', 'patch', 'options', 'head', 'trace'];
-                    info.endpointCount += methods.filter(m => pathItem[m]).length;
+                    info.endpointCount += methods.filter((m) => pathItem[m]).length;
                 }
             }
         }
@@ -40,14 +40,14 @@ export class APIService {
             info.contact = {
                 name: spec.info.contact.name,
                 url: spec.info.contact.url,
-                email: spec.info.contact.email
+                email: spec.info.contact.email,
             };
         }
         // Add license info if available
         if (spec.info?.license) {
             info.license = {
                 name: spec.info.license.name,
-                url: spec.info.license.url
+                url: spec.info.license.url,
             };
         }
         // Add terms of service if available
@@ -60,7 +60,7 @@ export class APIService {
         // First get the basic endpoints
         const basicEndpoints = processOpenAPISpec(spec);
         // Enhance with additional information
-        return basicEndpoints.map(endpoint => {
+        return basicEndpoints.map((endpoint) => {
             const pathItem = spec.paths?.[endpoint.path];
             if (!pathItem)
                 return endpoint;
@@ -71,14 +71,17 @@ export class APIService {
             // Get all parameters (both path and operation level)
             const pathParameters = Array.isArray(pathItem.parameters) ? pathItem.parameters : [];
             const operationParameters = Array.isArray(operation.parameters) ? operation.parameters : [];
-            const allParameters = [...pathParameters, ...operationParameters];
+            const allParameters = [
+                ...pathParameters,
+                ...operationParameters,
+            ];
             // Format parameters
-            const formattedParameters = allParameters.map(param => ({
+            const formattedParameters = allParameters.map((param) => ({
                 name: param.name,
                 in: param.in,
                 description: param.description,
                 required: param.required || false,
-                schema: param.schema
+                schema: param.schema,
             }));
             // Format request body if exists
             let requestBody = undefined;
@@ -87,7 +90,7 @@ export class APIService {
                 requestBody = {
                     description: requestBodyObj.description,
                     content: requestBodyObj.content,
-                    required: requestBodyObj.required
+                    required: requestBodyObj.required,
                 };
             }
             // Format responses
@@ -97,7 +100,7 @@ export class APIService {
                     const responseObj = response;
                     responses[status] = {
                         description: responseObj.description || '',
-                        content: responseObj.content || {}
+                        content: responseObj.content || {},
                     };
                 });
             }
@@ -112,7 +115,7 @@ export class APIService {
                 externalDocs: operation.externalDocs,
                 parameters: formattedParameters,
                 requestBody,
-                responses
+                responses,
             };
             // Add parameters with descriptions
             if (operation.parameters || pathItem.parameters) {
@@ -120,12 +123,12 @@ export class APIService {
                     ...(Array.isArray(pathItem.parameters) ? pathItem.parameters : []),
                     ...(Array.isArray(operation.parameters) ? operation.parameters : []),
                 ];
-                enhancedEndpoint.parameters = parameters.map(param => ({
+                enhancedEndpoint.parameters = parameters.map((param) => ({
                     name: param.name,
                     in: param.in,
                     description: param.description,
                     required: param.required || false,
-                    schema: param.schema
+                    schema: param.schema,
                 }));
             }
             // Add request body info
@@ -133,7 +136,7 @@ export class APIService {
                 const requestBody = operation.requestBody;
                 enhancedEndpoint.requestBody = {
                     description: requestBody.description,
-                    content: requestBody.content
+                    content: requestBody.content,
                 };
             }
             // Add responses info
@@ -143,7 +146,7 @@ export class APIService {
                     const responseObj = response;
                     enhancedEndpoint.responses[statusCode] = {
                         description: responseObj.description || '',
-                        content: responseObj.content
+                        content: responseObj.content,
                     };
                 }
             }
@@ -152,7 +155,7 @@ export class APIService {
     }
     groupEndpointsByTag(endpoints) {
         const grouped = {};
-        endpoints.forEach(endpoint => {
+        endpoints.forEach((endpoint) => {
             const tag = endpoint.tags?.[0] || 'Other';
             if (!grouped[tag]) {
                 grouped[tag] = [];

@@ -1,4 +1,32 @@
 import type { ProcessedEndpoint } from './types.js';
+export interface ExtractedEndpointInfoEmbeddingFormat {
+    id: string;
+    content: string;
+    method: string;
+    path: string;
+    summary?: string;
+    description?: string;
+    tags?: string[];
+    operationId?: string;
+    parameters?: Array<{
+        name: string;
+        in: string;
+        description?: string;
+        required: boolean;
+        schema?: any;
+    }>;
+    requestBody?: {
+        description?: string;
+        required?: boolean;
+        content?: Record<string, any>;
+    };
+    responses?: Record<string, {
+        description: string;
+        content?: Record<string, any>;
+    }>;
+    deprecated?: boolean;
+    security?: any[];
+}
 interface ExtractedEndpointInfo {
     /** The unique identifier for the endpoint */
     id: string;
@@ -25,34 +53,7 @@ export declare class ExtractionService {
     /**
      * Format the extracted information for embedding
      */
-    formatForEmbedding(extracted: ExtractedEndpointInfo[]): Array<{
-        id: string;
-        content: string;
-        method: string;
-        path: string;
-        summary?: string;
-        description?: string;
-        tags?: string[];
-        operationId?: string;
-        parameters?: Array<{
-            name: string;
-            in: string;
-            description?: string;
-            required: boolean;
-            schema?: any;
-        }>;
-        requestBody?: {
-            description?: string;
-            required?: boolean;
-            content?: Record<string, any>;
-        };
-        responses?: Record<string, {
-            description: string;
-            content?: Record<string, any>;
-        }>;
-        deprecated?: boolean;
-        security?: any[];
-    }>;
+    formatForEmbedding(extracted: ExtractedEndpointInfo[]): ExtractedEndpointInfoEmbeddingFormat[];
     private formatParameters;
     private formatRequestBody;
     private formatResponses;
