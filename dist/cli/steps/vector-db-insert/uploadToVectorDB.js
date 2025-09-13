@@ -1,7 +1,10 @@
 import chalk from 'chalk';
 import { ChromaClient } from 'chromadb';
+import { Logger } from '../../../utils/logger.js';
 const client = new ChromaClient(); // This will use the default persistent client
-export async function uploadToVectorDB(collectionName, documents) {
+export async function uploadToVectorDB(collectionName, documents, verbose = false) {
+    const logger = Logger.getInstance(verbose);
+    logger.info(chalk.blue('Uploading documents to ChromaDB...'));
     // Create a parallel array for each required field
     const ids = documents.map((d) => d.id);
     const docs = documents.map((d) => d.content);
@@ -20,9 +23,9 @@ export async function uploadToVectorDB(collectionName, documents) {
             documents: docs,
             metadatas,
         });
-        chalk.green(`Successfully added ${documents.length} documents to collection.`);
+        logger.info(chalk.green(`Successfully added ${documents.length} documents to collection.`));
     }
     catch (error) {
-        chalk.red('Error adding documents to ChromaDB:', error);
+        logger.error('Error adding documents to ChromaDB:', error);
     }
 }

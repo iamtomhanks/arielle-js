@@ -93,7 +93,8 @@ export const startCommand = new Command('start')
           });
 
           // Phase 3 - Vector database integration
-          await uploadToVectorDB('openapi-spec-docs', extractedInfo);
+          updateSpinnerText(spinner, 'Uploading to vector database...');
+          await uploadToVectorDB('openapi-spec-docs', extractedInfo, options.verbose);
 
           succeedSpinner(spinner, `Extraction complete. Saved to ${outputPath}`);
 
