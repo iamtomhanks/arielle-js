@@ -1,11 +1,13 @@
 import { Command } from 'commander';
 import ora from 'ora';
 import chalk from 'chalk';
+import path from 'path';
 import { UI } from '../utils/ui.js';
 import { Logger } from '../utils/logger.js';
 import { withErrorHandling } from '../utils/error-handler.js';
 import { APIService } from '../modules/api/api-service.js';
 import { InteractionService } from '../modules/cli/interaction-service.js';
+import { saveToJsonFile, generateTimestampFilename } from '../utils/file-utils.js';
 export const startCommand = new Command('start')
     .description('Start the ArielleJS wizard')
     .option('--verbose', 'Enable verbose logging', false)
@@ -49,6 +51,18 @@ export const startCommand = new Command('start')
             spinner.succeed(chalk.green('✓ ') + `Processed ${endpoints.length} endpoints`);
             // Display results
             interactionService.displayEndpoints(endpointsByTag);
+            // Extract and save endpoint information
+            spinner = ora(chalk.dim('Extracting endpoint information...')).start();
+            const extractedInfo = apiService.extractEndpointInfo(endpoints);
+            // Save to JSON file
+            const outputDir = path.resolve(process.cwd(), 'phase2-output');
+            const filename = generateTimestampFilename('api-extraction');
+            const outputPath = await saveToJsonFile(filename, extractedInfo, {
+                outputDir,
+                createDir: true,
+                pretty: true
+            });
+            spinner.succeed(chalk.green('✓ ') + `Extraction complete. Saved to ${outputPath}`);
             interactionService.displayCompletionMessage();
         }
         catch (error) {
