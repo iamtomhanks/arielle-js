@@ -1,20 +1,25 @@
 import { Command } from 'commander';
 import ora, { type Ora } from 'ora';
-import path from 'path';
-import inquirer from 'inquirer';
 import chalk from 'chalk';
 import { UI } from '../utils/ui.js';
-import { Logger, logger } from '../utils/logger.js';
+import { Logger } from '../utils/logger.js';
 import { withErrorHandling } from '../utils/error-handler.js';
-import { loadOpenAPI } from '../openapi/loader.js';
-import { validateFullOpenAPISpec } from '../openapi/validator.js';
-import { processOpenAPISpec } from '../openapi/processor.js';
-import type { ParameterObject } from '../openapi/types.js';
+import { APIService } from '../modules/api/api-service.js';
+import { InteractionService } from '../modules/cli/interaction-service.js';
+import type { OpenAPIV3 } from 'openapi-types';
 
 interface StartOptions {
   verbose: boolean;
   spec?: string;
   output?: string;
+}
+
+interface ProcessedEndpoint {
+  method: string;
+  path: string;
+  summary?: string;
+  tags?: string[];
+  parameters?: any[];
 }
 
 export const startCommand = new Command('start')
@@ -31,8 +36,10 @@ export const startCommand = new Command('start')
       console.log('CLI started with options:', JSON.stringify(options, null, 2));
     }
 
-    // Initialize logger with verbosity
+    // Initialize services
     const logger = Logger.getInstance(options.verbose);
+    const apiService = new APIService(options.verbose);
+    const interactionService = new InteractionService();
 
     await withErrorHandling(
       async () => {
@@ -40,143 +47,36 @@ export const startCommand = new Command('start')
         let specPath = options.spec;
 
         try {
-
           // Get OpenAPI spec path if not provided
           if (!specPath) {
-            UI.section('OpenAPI Specification');
-            UI.info('Please provide the path or URL to your OpenAPI specification file (YAML/JSON)');
-
-            const answers = await inquirer.prompt([
-              {
-                type: 'input',
-                name: 'specPath',
-                message: 'Path/URL to OpenAPI spec:',
-                prefix: chalk.cyan('?'),
-                validate: (input: string) => {
-                  return input.trim() ? true : 'Please enter a valid path or URL';
-                },
-              },
-            ]);
-            specPath = answers.specPath;
+            specPath = await interactionService.promptForSpecPath();
           }
 
-          // Start spinner after we have the spec path
+          // Start processing
           spinner = ora({
             text: chalk.dim('Processing OpenAPI specification...'),
             color: 'cyan',
           }).start();
 
-          logger.debug('Starting ArielleJS in verbose mode');
+          // Load and validate the spec
+          spinner.text = chalk.dim('Loading OpenAPI specification...');
+          const spec = await apiService.loadAndValidateSpec(specPath!);
+          
+          // Display API information
+          spinner.succeed(chalk.green('✓ ') + 'Specification loaded');
+          const apiInfo = apiService.getAPIInfo(spec);
+          interactionService.displayAPIInfo(apiInfo);
 
-          // Load and validate the OpenAPI spec
-          if (spinner) spinner.text = chalk.dim('Loading OpenAPI specification...');
-          if (!specPath) {
-            const error = new Error('No OpenAPI specification path provided');
-            if (spinner) spinner.fail(chalk.red('Error: ') + error.message);
-            throw error;
-          }
+          // Process endpoints
+          spinner = ora(chalk.dim('Processing API endpoints...')).start();
+          const endpoints = apiService.processEndpoints(spec);
+          const endpointsByTag = apiService.groupEndpointsByTag(endpoints);
+          spinner.succeed(chalk.green('✓ ') + `Processed ${endpoints.length} endpoints`);
 
-          logger.debug('Loading spec from path:', specPath);
-          let spec;
-          try {
-            spec = await loadOpenAPI(specPath);
-            if (spinner) spinner.succeed(chalk.green('✓ ') + 'Specification loaded');
+          // Display results
+          interactionService.displayEndpoints(endpointsByTag);
+          interactionService.displayCompletionMessage();
 
-            UI.section('API Information');
-            UI.table([
-              ['Title', spec.info?.title || 'N/A'],
-              ['Version', spec.info?.version || 'N/A'],
-              [
-                'Description',
-                spec.info?.description?.split('\n')[0] +
-                  (spec.info?.description?.includes('\n') ? '...' : '') || 'N/A',
-              ],
-              ['Endpoints', Object.keys(spec.paths || {}).length.toString()],
-            ]);
-          } catch (error) {
-            if (spinner) spinner.fail(chalk.red('Error loading specification'));
-            UI.error(
-              `Failed to load OpenAPI spec: ${error instanceof Error ? error.message : 'Unknown error'}`
-            );
-            throw error;
-          }
-
-          // Perform full validation
-          spinner.text = 'Validating OpenAPI specification...';
-          try {
-            validateFullOpenAPISpec(spec);
-            spinner.succeed('OpenAPI specification is valid');
-          } catch (error) {
-            spinner.warn('OpenAPI specification has validation warnings');
-            logger.warn((error as Error).message);
-          }
-
-          // Process the spec
-          if (spinner) spinner.text = chalk.dim('Processing API endpoints...');
-          const endpoints = processOpenAPISpec(spec);
-          if (spinner)
-            spinner.succeed(chalk.green('✓ ') + `Processed ${endpoints.length} endpoints`);
-
-          UI.section('API Endpoints');
-
-          // Group endpoints by tag
-          const endpointsByTag: Record<string, typeof endpoints> = {};
-          endpoints.forEach((endpoint) => {
-            const tag = endpoint.tags?.[0] || 'Other';
-            if (!endpointsByTag[tag]) {
-              endpointsByTag[tag] = [];
-            }
-            endpointsByTag[tag].push(endpoint);
-          });
-
-          // Display endpoints by tag
-          for (const [tag, tagEndpoints] of Object.entries(endpointsByTag)) {
-            console.log(`\n${chalk.cyan.bold(tag)} (${tagEndpoints.length} endpoints)`);
-
-            tagEndpoints.slice(0, 5).forEach((endpoint) => {
-              const method = endpoint.method.toLowerCase();
-              let coloredMethod: string;
-
-              // Handle different HTTP methods with appropriate colors
-              switch (method) {
-                case 'get':
-                  coloredMethod = chalk.green.bold(endpoint.method.padEnd(6));
-                  break;
-                case 'post':
-                  coloredMethod = chalk.blue.bold(endpoint.method.padEnd(6));
-                  break;
-                case 'put':
-                  coloredMethod = chalk.yellow.bold(endpoint.method.padEnd(6));
-                  break;
-                case 'delete':
-                  coloredMethod = chalk.red.bold(endpoint.method.padEnd(6));
-                  break;
-                case 'patch':
-                  coloredMethod = chalk.magenta.bold(endpoint.method.padEnd(6));
-                  break;
-                default:
-                  coloredMethod = chalk.white.bold(endpoint.method.padEnd(6));
-              }
-
-              console.log(`  ${coloredMethod} ${endpoint.path}`);
-
-              if (endpoint.summary) {
-                console.log(`    ${chalk.dim(endpoint.summary)}`);
-              }
-            });
-
-            if (tagEndpoints.length > 5) {
-              console.log(chalk.dim(`  ...and ${tagEndpoints.length - 5} more endpoints`));
-            }
-          }
-
-          UI.divider();
-
-          // Show next steps
-          UI.section('Next Steps');
-          console.log(chalk.green('✓ ') + 'Your API has been successfully analyzed');
-          console.log(chalk.yellow('! ') + 'Vector database integration coming in Phase 3');
-          console.log('\n' + chalk.dim('Run with --verbose for detailed logging'));
         } catch (error) {
           if (spinner) {
             spinner.fail('Failed to complete ArielleJS wizard');
@@ -198,5 +98,6 @@ export const startCommand = new Command('start')
 // Re-export for testing
 export const _private = {
   Logger,
-  logger,
+  APIService,
+  InteractionService,
 };
