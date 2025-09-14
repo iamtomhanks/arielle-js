@@ -1,15 +1,26 @@
 import { Logger } from '../../../utils/logger.js';
+import {
+  DEFAULT_EMBEDDING_MODEL,
+  EMBEDDING_MODELS,
+  validateEmbeddingDimensions,
+} from './embedding-models.js';
 import { LLMProviderInterface, LLMQueryOptions, LLMQueryResult } from './types/llm.types.js';
 
 export abstract class BaseLLMProvider implements LLMProviderInterface {
   protected readonly logger: Logger;
   protected readonly config: any;
   protected readonly providerName: string;
+  public embeddingModel: string;
+  public embeddingDimensions: number;
 
   constructor(config: any, providerName: string) {
     this.config = config;
     this.providerName = providerName;
     this.logger = Logger.getInstance(!!process.env.DEBUG);
+
+    // Set up embedding model
+    this.embeddingModel = this.config.embeddingModel || DEFAULT_EMBEDDING_MODEL;
+    this.embeddingDimensions = this.getEmbeddingDimensions(this.embeddingModel);
   }
 
   abstract query(options: LLMQueryOptions): Promise<LLMQueryResult>;
@@ -19,6 +30,37 @@ export abstract class BaseLLMProvider implements LLMProviderInterface {
   }
 
   abstract isConfigured(): boolean;
+
+  /**
+   * Gets the embedding dimensions for a specific model
+   */
+  protected getEmbeddingDimensions(modelName: string): number {
+    const model = EMBEDDING_MODELS[modelName];
+    if (!model) {
+      this.logger.warn(`Unknown embedding model: ${modelName}. Using default dimensions.`);
+      return EMBEDDING_MODELS[DEFAULT_EMBEDDING_MODEL].dimensions;
+    }
+    return model.dimensions;
+  }
+
+  /**
+   * Validates if the provided embedding matches the expected dimensions
+   */
+  protected validateEmbedding(embedding: number[]): boolean {
+    const isValid = validateEmbeddingDimensions(embedding, this.embeddingDimensions);
+    if (!isValid) {
+      this.logger.error(
+        `Embedding dimension mismatch. Expected ${this.embeddingDimensions}, got ${embedding.length}`
+      );
+    }
+    return isValid;
+  }
+
+  /**
+   * Abstract method to generate embeddings for the given text
+   * Must be implemented by each provider
+   */
+  public abstract generateEmbeddings(text: string): Promise<number[]>;
 
   protected validateConfig(requiredFields: string[]): boolean {
     for (const field of requiredFields) {

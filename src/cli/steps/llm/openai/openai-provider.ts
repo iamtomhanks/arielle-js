@@ -17,6 +17,24 @@ export class OpenAIProvider extends BaseLLMProvider {
     return this.validateConfig(['apiKey']);
   }
 
+  async generateEmbeddings(text: string): Promise<number[]> {
+    try {
+      const response = await this.client.embeddings.create({
+        model: this.embeddingModel,
+        input: text,
+      });
+
+      const embedding = response.data[0].embedding;
+      if (!this.validateEmbedding(embedding)) {
+        throw new Error('Invalid embedding dimensions');
+      }
+      return embedding;
+    } catch (error: any) {
+      this.logger.error('Error generating embeddings:', error);
+      throw new Error(`Failed to generate embeddings: ${error.message}`);
+    }
+  }
+
   async query(options: LLMQueryOptions): Promise<LLMQueryResult> {
     if (!this.isConfigured()) {
       throw new Error('OpenAI provider is not properly configured');

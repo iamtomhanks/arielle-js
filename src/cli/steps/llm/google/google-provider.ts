@@ -5,6 +5,7 @@ import { LLMQueryOptions, LLMQueryResult } from '../types/llm.types.js';
 export class GoogleGenerativeAIProvider extends BaseLLMProvider {
   private model: any;
   private generationConfig: any;
+  private embeddingModelClient: any;
 
   constructor(config: any) {
     super(config, 'Google Generative AI');
@@ -12,16 +13,42 @@ export class GoogleGenerativeAIProvider extends BaseLLMProvider {
     // Initialize the Google Generative AI client
     const genAI = new GoogleGenerativeAI(config.apiKey);
 
-    // Initialize the model
+    // Initialize the text generation model
     this.model = genAI.getGenerativeModel({
       model: config.model || 'gemini-1.5-flash-latest',
     });
+
+    // Initialize the embedding model
+    this.embeddingModelClient = genAI;
 
     // Set generation configuration
     this.generationConfig = {
       temperature: config.temperature || 0.7,
       maxOutputTokens: config.maxTokens || 1000,
     };
+  }
+
+  async generateEmbeddings(text: string): Promise<number[]> {
+    try {
+      // Google's embedding model
+      const model = this.embeddingModelClient.getGenerativeModel({
+        model: this.embeddingModel,
+      });
+
+      const result = await model.embedContent({
+        content: { parts: [{ text }] },
+        taskType: 'retrieval_document',
+      });
+
+      const embedding = result.embedding.values;
+      if (!this.validateEmbedding(embedding)) {
+        throw new Error('Invalid embedding dimensions');
+      }
+      return embedding;
+    } catch (error: any) {
+      this.logger.error('Error generating embeddings:', error);
+      throw new Error(`Failed to generate embeddings: ${error.message}`);
+    }
   }
 
   isConfigured(): boolean {

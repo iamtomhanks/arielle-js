@@ -40,4 +40,6 @@ export interface LLMConfig {
   baseUrl?: string;
   temperature?: number;
   maxTokens?: number;
+  embeddingModel?: string;
+  openaiApiKey?: string; // For OpenAI embeddings with other providers
 }

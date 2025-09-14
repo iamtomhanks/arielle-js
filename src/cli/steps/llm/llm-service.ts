@@ -7,10 +7,15 @@ export class LLMService {
   private collection: Collection;
   private llmConfig: LLMConfig;
   private conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+  private provider: any; // LLM provider instance
 
   constructor(collection: Collection, llmConfig: LLMConfig) {
     this.collection = collection;
     this.llmConfig = llmConfig;
+    this.provider = LLMFactory.createProvider(llmConfig);
+    
+    // Log the embedding model being used
+    console.log(`\n🔧 Using embedding model: ${this.provider.embeddingModel} (${this.provider.embeddingDimensions} dimensions)`);
   }
 
   async startConversation() {

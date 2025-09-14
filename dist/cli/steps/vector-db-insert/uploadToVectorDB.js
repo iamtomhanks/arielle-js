@@ -3,9 +3,9 @@ import { ChromaClient } from 'chromadb';
 import { Logger } from '../../../utils/logger.js';
 // Simple configuration for local ChromaDB
 const client = new ChromaClient({
-    path: 'http://localhost:8000'
+    path: 'http://localhost:8000',
 });
-export async function uploadToVectorDB(collectionName, documents, verbose = false) {
+export async function uploadToVectorDB(collectionName, documents, provider, verbose = false) {
     const logger = Logger.getInstance(verbose);
     try {
         // Check server connectivity
@@ -24,7 +24,7 @@ export async function uploadToVectorDB(collectionName, documents, verbose = fals
         // List existing collections for debugging
         try {
             const collections = await client.listCollections();
-            logger.info(chalk.blue(`Existing collections: ${collections.map(c => c.name).join(', ') || 'None'}`));
+            logger.info(chalk.blue(`Existing collections: ${collections.map((c) => c.name).join(', ') || 'None'}`));
         }
         catch (listError) {
             const errorMessage = listError instanceof Error ? listError.message : 'Unknown error';
@@ -46,19 +46,31 @@ export async function uploadToVectorDB(collectionName, documents, verbose = fals
             console.log('\n🔍 Checking for existing collections...');
             const existingCollections = await client.listCollections();
             console.log('📚 Existing collections:', existingCollections.map((c) => c.name));
-            console.log(`\n🔄 Creating/Getting collection: ${collectionName}`);
-            collection = await client.getOrCreateCollection({
+            // Delete existing collection if it exists
+            if (existingCollections.some((c) => c.name === collectionName)) {
+                console.log(`\n🗑️  Deleting existing collection: ${collectionName}`);
+                await client.deleteCollection({ name: collectionName });
+            }
+            console.log(`\n🔄 Creating collection: ${collectionName}`);
+            // Create a type-safe metadata object
+            const metadata = {
+                'hnsw:space': 'cosine',
+                embedding_model: provider.embeddingModel,
+                embedding_dimensions: provider.embeddingDimensions,
+            };
+            collection = await client.createCollection({
                 name: collectionName,
-                metadata: { "hnsw:space": "cosine" }
+                metadata,
             });
-            logger.info(chalk.blue(`✓ Using collection: ${collectionName}`));
+            logger.info(chalk.blue(`✓ Created collection: ${collectionName}`));
+            logger.info(chalk.blue(`✓ Using embedding model: ${provider.embeddingModel} (${provider.embeddingDimensions} dimensions)`));
             // Verify collection is accessible
             try {
                 const collectionInfo = await collection.get();
                 console.log('✅ Collection info:', {
                     name: collection.name,
                     count: collectionInfo.ids?.length || 0,
-                    metadata: collection.metadata
+                    metadata: collection.metadata,
                 });
             }
             catch (verifyError) {
@@ -78,7 +90,7 @@ export async function uploadToVectorDB(collectionName, documents, verbose = fals
         try {
             logger.info(chalk.blue(`Preparing ${documents.length} documents for upload...`));
             // Validate documents before processing
-            const invalidDocs = documents.filter(doc => !doc.content || !doc.method || !doc.path);
+            const invalidDocs = documents.filter((doc) => !doc.content || !doc.method || !doc.path);
             if (invalidDocs.length > 0) {
                 console.error('❌ Found invalid documents:', invalidDocs);
                 throw new Error(`${invalidDocs.length} documents are missing required fields (content, method, or path)`);
@@ -94,29 +106,40 @@ export async function uploadToVectorDB(collectionName, documents, verbose = fals
                 const batchNumber = Math.floor(i / batchSize) + 1;
                 logger.info(chalk.blue(`Processing batch ${batchNumber} of ${totalBatches} (documents ${i + 1} to ${Math.min(i + batchSize, documents.length)})`));
                 const ids = batch.map((doc, idx) => doc.id || `doc_${i + idx}`);
-                const embeddings = batch.map(() => new Array(1536).fill(0)); // Dummy embeddings for now
-                const metadatas = batch.map(doc => ({
+                const embeddings = [];
+                // Generate embeddings for the batch
+                for (const doc of batch) {
+                    try {
+                        const embedding = await provider.generateEmbeddings(doc.content);
+                        embeddings.push(embedding);
+                    }
+                    catch (error) {
+                        logger.error(`Failed to generate embedding for document: ${doc.id}`, error);
+                        throw error;
+                    }
+                }
+                const metadatas = batch.map((doc) => ({
                     method: doc.method,
                     path: doc.path,
-                    summary: doc.summary?.substring(0, 200) || '', // Limit summary length
+                    summary: doc.summary?.substring(0, 200) || '',
                     tags: doc.tags?.join(',')?.substring(0, 200) || '',
-                    operationId: doc.operationId || ''
+                    operationId: doc.operationId || '',
                 }));
-                const docs = batch.map(doc => doc.content);
+                const docs = batch.map((doc) => doc.content);
                 console.log('\n📤 Uploading batch to ChromaDB:', {
                     batchNumber,
                     numDocuments: docs.length,
                     firstDocumentId: ids[0],
                     firstDocumentPreview: docs[0]?.substring(0, 100) + (docs[0]?.length > 100 ? '...' : ''),
                     firstDocumentLength: docs[0]?.length,
-                    embeddingsDimensions: embeddings[0]?.length || 0
+                    embeddingsDimensions: embeddings[0]?.length || 0,
                 });
                 try {
                     await collection.add({
                         ids,
                         embeddings,
                         metadatas,
-                        documents: docs
+                        documents: docs,
                     });
                     console.log('✅ Successfully uploaded batch to ChromaDB');
                 }
@@ -131,7 +154,7 @@ export async function uploadToVectorDB(collectionName, documents, verbose = fals
             logger.info(chalk.green(`✅ Successfully uploaded ${count} documents to collection '${collectionName}'`));
             return {
                 success: true,
-                collection: collection
+                collection: collection, // Type assertion needed due to ChromaDB type definitions
             };
         }
         catch (uploadError) {
@@ -143,7 +166,7 @@ export async function uploadToVectorDB(collectionName, documents, verbose = fals
             }
             return {
                 success: false,
-                error: errorMessage
+                error: errorMessage,
             };
         }
     }
@@ -159,7 +182,7 @@ export async function uploadToVectorDB(collectionName, documents, verbose = fals
         }
         return {
             success: false,
-            error: errorMessage
+            error: errorMessage,
         };
     }
     //   });

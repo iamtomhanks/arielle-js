@@ -4,6 +4,22 @@ import { OpenAIProvider } from './openai/openai-provider.js';
 import { LLMConfig } from './types/llm.types.js';
 
 export class LLMFactory {
+  /**
+   * Gets the default embedding model for a provider
+   */
+  private static getDefaultEmbeddingModel(provider: string): string {
+    const defaultModels = {
+      openai: 'text-embedding-3-small',
+      google: 'text-embedding-004',
+      selfhosted: 'all-mpnet-base-v2' // Example for self-hosted
+    };
+
+    return defaultModels[provider as keyof typeof defaultModels] || 'text-embedding-3-small';
+  }
+
+  /**
+   * Creates an LLM provider with the given configuration
+   */
   static createProvider(config: LLMConfig): BaseLLMProvider {
     const commonConfig = {
       model: config.model,
@@ -12,17 +28,24 @@ export class LLMFactory {
       apiKey: config.apiKey,
     };
 
+    // Set default embedding model based on provider
+    const providerConfig = {
+      ...commonConfig,
+      embeddingModel: config.embeddingModel || this.getDefaultEmbeddingModel(config.provider),
+      openaiApiKey: config.openaiApiKey
+    };
+
     switch (config.provider) {
       case 'openai':
         return new OpenAIProvider({
-          ...commonConfig,
+          ...providerConfig,
           model: config.model || 'gpt-4',
           baseUrl: config.baseUrl,
         });
 
       case 'google':
         return new GoogleGenerativeAIProvider({
-          ...commonConfig,
+          ...providerConfig,
           model: config.model || 'gemini-1.5-flash-latest',
         });
 
