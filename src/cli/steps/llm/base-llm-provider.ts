@@ -32,33 +32,158 @@ export abstract class BaseLLMProvider implements LLMProviderInterface {
 
   protected async retrieveContext(collection: any, query: string): Promise<string> {
     try {
-      const results = await collection.query({
-        queryTexts: [query],
-        nResults: 5,
-      });
+      console.log('\n🔍 Attempting to query ChromaDB with query:', query);
 
-      if (!results.documents || results.documents.length === 0 || !results.documents[0].length) {
-        this.logger.debug('No documents found in ChromaDB query results');
-        return 'No relevant context found.';
+      // Step 1: Verify collection is valid
+      if (!collection) {
+        throw new Error('Collection is null or undefined');
       }
 
-      // Format the context from the query results
-      const formattedContext = results.documents[0]
-        .map((doc: string, i: number) => {
-          const metadata = results.metadatas?.[0]?.[i] || {};
-          const distance = results.distances?.[0]?.[i];
-          const score = distance !== undefined ? (1 - distance).toFixed(2) : 'N/A';
-          return `Document ${i + 1} (Relevance: ${score}):
-${doc}
-Metadata: ${JSON.stringify(metadata, null, 2)}`;
-        })
-        .join('\n\n---\n\n');
+      // Step 2: Verify collection has data
+      let collectionInfo;
+      try {
+        collectionInfo = await collection.get();
+        console.log('📊 Collection info:', {
+          documentCount: collectionInfo.ids?.length || 0,
+          firstDocumentId: collectionInfo.ids?.[0],
+          firstDocumentLength: collectionInfo.documents?.[0]?.length,
+          metadata: collectionInfo.metadatas?.[0],
+        });
 
-      this.logger.debug('Retrieved context from ChromaDB:', formattedContext);
-      return formattedContext;
+        if (!collectionInfo.ids || collectionInfo.ids.length === 0) {
+          console.warn('⚠️ Collection is empty');
+          return '';
+        }
+      } catch (collectionError: any) {
+        console.error('❌ Error getting collection info:', collectionError);
+        throw new Error(`Failed to access collection: ${collectionError.message}`);
+      }
+
+      // Step 3: Execute the query with error handling
+      let results;
+      try {
+        console.log('🔍 Executing query with params:', {
+          queryTexts: [query],
+          nResults: 5,
+          include: ['documents', 'metadatas', 'distances'],
+        });
+
+        results = await collection.query({
+          queryTexts: [query],
+          nResults: Math.min(5, collectionInfo.ids.length), // Don't ask for more than available
+          include: ['documents', 'metadatas', 'distances'],
+        });
+
+        console.log('✅ Query executed successfully');
+      } catch (queryError: any) {
+        console.error('❌ Query failed:', queryError);
+
+        // Try a simpler query to diagnose the issue
+        try {
+          console.log('🔄 Attempting simpler query...');
+          const testResults = await collection.query({
+            queryTexts: [query],
+            nResults: 1,
+            include: ['documents'],
+          });
+          console.log('✅ Simple query succeeded:', {
+            hasDocuments: !!testResults.documents,
+            docCount: testResults.documents?.[0]?.length || 0,
+          });
+        } catch (simpleQueryError) {
+          console.error('❌ Simple query also failed:', simpleQueryError);
+        }
+
+        throw new Error(`Query failed: ${queryError.message}`);
+      }
+
+      // Step 4: Process results with detailed validation
+      try {
+        if (
+          !results ||
+          !results.documents ||
+          results.documents.length === 0 ||
+          !results.documents[0]
+        ) {
+          console.warn('⚠️ No documents found in query results');
+          console.debug('Results object:', JSON.stringify(results, null, 2));
+          return '';
+        }
+
+        const resultDocuments = results.documents[0] || [];
+        const resultMetadatas = results.metadatas?.[0] || [];
+        const resultDistances = results.distances?.[0] || [];
+
+        console.log(`📊 Retrieved ${resultDocuments.length} results`);
+
+        // Log details of each result
+        resultDocuments.forEach((doc: string, index: number) => {
+          console.log(`\n📄 Result ${index + 1}:`);
+          console.log(`  Document: ${doc?.substring(0, 150)}${doc?.length > 150 ? '...' : ''}`);
+          console.log(`  Metadata:`, resultMetadatas[index] || 'None');
+          console.log(
+            `  Distance: ${resultDistances[index] !== undefined ? resultDistances[index] : 'N/A'}`
+          );
+        });
+
+        // Format the context from results
+        const context = resultDocuments
+          .map((doc: string, index: number) => {
+            if (!doc) return null;
+            const metadata = resultMetadatas[index] || {};
+            const distance = resultDistances[index];
+            const similarity = distance !== undefined ? (1 - distance).toFixed(2) : 'N/A';
+
+            return `[${metadata.method || 'UNKNOWN'} ${metadata.path || ''} | Similarity: ${similarity}]\n${doc}`;
+          })
+          .filter(Boolean) // Remove any null entries
+          .join('\n\n');
+
+        if (!context) {
+          console.warn('⚠️ No valid documents found after processing results');
+          return '';
+        }
+
+        return context;
+      } catch (processError: any) {
+        console.error('❌ Error processing results:', processError);
+        console.error(
+          'Results object structure:',
+          JSON.stringify(
+            {
+              documents: results?.documents?.map((d: any, i: number) => ({
+                index: i,
+                type: typeof d,
+                isArray: Array.isArray(d),
+                length: d?.length,
+                firstChars: typeof d?.[0] === 'string' ? d[0]?.substring(0, 50) : 'N/A',
+                fullValue: JSON.stringify(d).substring(0, 200),
+              })),
+              metadatas: results?.metadatas?.map((m: any, i: number) => ({
+                index: i,
+                type: typeof m,
+                isArray: Array.isArray(m),
+                length: m?.length,
+                firstItem: m?.[0],
+                fullValue: JSON.stringify(m).substring(0, 200),
+              })),
+              distances: results?.distances?.map((d: any, i: number) => ({
+                index: i,
+                type: typeof d,
+                isArray: Array.isArray(d),
+                length: d?.length,
+                firstValue: d?.[0],
+              })),
+            },
+            null,
+            2
+          )
+        );
+        throw new Error(`Failed to process query results: ${processError.message}`);
+      }
     } catch (error) {
-      this.logger.error('Error retrieving context from ChromaDB:', error);
-      return 'Error retrieving relevant context.';
+      console.error('❌ Error in retrieveContext:', error);
+      throw error;
     }
   }
 }

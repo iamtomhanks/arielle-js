@@ -43,11 +43,28 @@ export async function uploadToVectorDB(collectionName, documents, verbose = fals
         // Create or get collection
         let collection;
         try {
+            console.log('\n🔍 Checking for existing collections...');
+            const existingCollections = await client.listCollections();
+            console.log('📚 Existing collections:', existingCollections.map((c) => c.name));
+            console.log(`\n🔄 Creating/Getting collection: ${collectionName}`);
             collection = await client.getOrCreateCollection({
                 name: collectionName,
                 metadata: { "hnsw:space": "cosine" }
             });
             logger.info(chalk.blue(`✓ Using collection: ${collectionName}`));
+            // Verify collection is accessible
+            try {
+                const collectionInfo = await collection.get();
+                console.log('✅ Collection info:', {
+                    name: collection.name,
+                    count: collectionInfo.ids?.length || 0,
+                    metadata: collection.metadata
+                });
+            }
+            catch (verifyError) {
+                console.error('❌ Failed to verify collection:', verifyError);
+                throw verifyError;
+            }
         }
         catch (collectionError) {
             const errorMessage = collectionError instanceof Error ? collectionError.message : 'Unknown error';
@@ -60,8 +77,18 @@ export async function uploadToVectorDB(collectionName, documents, verbose = fals
         // Prepare documents for insertion
         try {
             logger.info(chalk.blue(`Preparing ${documents.length} documents for upload...`));
+            // Validate documents before processing
+            const invalidDocs = documents.filter(doc => !doc.content || !doc.method || !doc.path);
+            if (invalidDocs.length > 0) {
+                console.error('❌ Found invalid documents:', invalidDocs);
+                throw new Error(`${invalidDocs.length} documents are missing required fields (content, method, or path)`);
+            }
             const batchSize = 100; // Process in batches to avoid overwhelming the server
             const totalBatches = Math.ceil(documents.length / batchSize);
+            console.log(`\n📂 Document processing summary:`);
+            console.log(`- Total documents: ${documents.length}`);
+            console.log(`- Batch size: ${batchSize}`);
+            console.log(`- Total batches: ${totalBatches}`);
             for (let i = 0; i < documents.length; i += batchSize) {
                 const batch = documents.slice(i, i + batchSize);
                 const batchNumber = Math.floor(i / batchSize) + 1;
@@ -76,13 +103,27 @@ export async function uploadToVectorDB(collectionName, documents, verbose = fals
                     operationId: doc.operationId || ''
                 }));
                 const docs = batch.map(doc => doc.content);
-                logger.debug(chalk.blue(`Adding batch ${batchNumber} with ${batch.length} documents`));
-                await collection.add({
-                    ids,
-                    embeddings,
-                    metadatas,
-                    documents: docs
+                console.log('\n📤 Uploading batch to ChromaDB:', {
+                    batchNumber,
+                    numDocuments: docs.length,
+                    firstDocumentId: ids[0],
+                    firstDocumentPreview: docs[0]?.substring(0, 100) + (docs[0]?.length > 100 ? '...' : ''),
+                    firstDocumentLength: docs[0]?.length,
+                    embeddingsDimensions: embeddings[0]?.length || 0
                 });
+                try {
+                    await collection.add({
+                        ids,
+                        embeddings,
+                        metadatas,
+                        documents: docs
+                    });
+                    console.log('✅ Successfully uploaded batch to ChromaDB');
+                }
+                catch (addError) {
+                    console.error('❌ Failed to add batch to ChromaDB:', addError);
+                    throw addError;
+                }
                 logger.info(chalk.green(`✓ Added batch ${batchNumber}/${totalBatches} (${i + batch.length}/${documents.length} documents)`));
             }
             // Verify the count
