@@ -10,14 +10,14 @@ export const EMBEDDING_MODELS: Record<string, EmbeddingModelConfig> = {
     dimensions: 1536,
     provider: 'openai',
   },
-  'text-embedding-3-large': {
-    name: 'text-embedding-3-large',
-    dimensions: 3072,
-    provider: 'openai',
-  },
   'text-embedding-004': {
     name: 'text-embedding-004',
-    dimensions: 768,
+    dimensions: 768, // Actual output dimensions from the model
+    provider: 'google',
+  },
+  'text-embedding-3-large': {
+    name: 'text-embedding-3-large',
+    dimensions: 768, // Higher dimension model if needed
     provider: 'google',
   },
   // Add more models as needed

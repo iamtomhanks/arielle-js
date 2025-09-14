@@ -9,17 +9,33 @@ export class GoogleGenerativeAIProvider extends BaseLLMProvider {
 
   constructor(config: any) {
     super(config, 'Google Generative AI');
+    const modelName = config.model || 'gemini-1.5-flash-latest';
+
+    // Log configuration
+    const configInfo =
+      `Model: ${modelName}, ` +
+      `Embedding: ${config.embeddingModel || 'text-embedding-004 (default)'}, ` +
+      `Temp: ${config.temperature || 0.7}, ` +
+      `Max Tokens: ${config.maxTokens || 1000}, ` +
+      `Embed Dims: ${config.embeddingDimensions || 'Not specified'}, ` +
+      `Has API Key: ${!!config.apiKey}`;
+    this.logger.info(`Initializing Google Generative AI Provider with config: ${configInfo}`);
 
     // Initialize the Google Generative AI client
     const genAI = new GoogleGenerativeAI(config.apiKey);
 
     // Initialize the text generation model
+    this.logger.info(`Initializing text generation model: ${modelName}`);
     this.model = genAI.getGenerativeModel({
-      model: config.model || 'gemini-1.5-flash-latest',
+      model: modelName,
     });
 
-    // Initialize the embedding model
+    // Initialize the embedding model with the configured model
     this.embeddingModelClient = genAI;
+    this.embeddingModel = config.embeddingModel || 'text-embedding-004';
+    this.logger.info(
+      `Using embedding model: ${this.embeddingModel} (${this.embeddingDimensions} dimensions)`
+    );
 
     // Set generation configuration
     this.generationConfig = {
@@ -30,19 +46,49 @@ export class GoogleGenerativeAIProvider extends BaseLLMProvider {
 
   async generateEmbeddings(text: string): Promise<number[]> {
     try {
-      // Google's embedding model
+      // Log the embedding generation request
+      const textPreview = text.length > 50 ? `${text.substring(0, 50)}...` : text;
+      this.logger.info(
+        `Starting embedding generation - Model: ${this.embeddingModel}, ` +
+          `Text: "${textPreview}" (${text.length} chars), ` +
+          `Expected Dims: ${this.embeddingDimensions}`
+      );
+
+      // Get the embedding model
       const model = this.embeddingModelClient.getGenerativeModel({
         model: this.embeddingModel,
       });
 
+      // Log before making the API call
+      this.logger.debug('Calling Google Generative AI API for embeddings...');
+
+      // Generate embeddings - let the model use its default dimensions
+      const startTime = Date.now();
       const result = await model.embedContent({
         content: { parts: [{ text }] },
         taskType: 'retrieval_document',
       });
+      const duration = Date.now() - startTime;
 
       const embedding = result.embedding.values;
+
+      // Log the embedding results
+      this.logger.info(
+        `Embedding generation completed - ` +
+          `Model: ${this.embeddingModel}, ` +
+          `Dimensions: ${embedding.length}, ` +
+          `Duration: ${duration}ms`
+      );
+
+      // Debug log first few values if verbose logging is enabled
+      if (this.logger.isVerbose) {
+        this.logger.debug(`First few embedding values: ${embedding.slice(0, 3).join(', ')}...`);
+      }
+
       if (!this.validateEmbedding(embedding)) {
-        throw new Error('Invalid embedding dimensions');
+        throw new Error(
+          `Invalid embedding dimensions. Expected ${this.embeddingDimensions}, got ${embedding.length}`
+        );
       }
       return embedding;
     } catch (error: any) {

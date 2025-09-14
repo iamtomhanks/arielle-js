@@ -6,8 +6,8 @@ import { withErrorHandling } from '../utils/error-handler.js';
 import { Logger } from '../utils/logger.js';
 import { UI } from '../utils/ui.js';
 import { promptForLLMSelection } from './steps/llm-selection/prompts.js';
-import { LLMService } from './steps/llm/llm-service.js';
 import { LLMFactory } from './steps/llm/llm-factory.js';
+import { LLMService } from './steps/llm/llm-service.js';
 import {
   createProcessingSpinner,
   displayRawResults,
@@ -125,13 +125,15 @@ export const startCommand = new Command('start')
             }
 
             updateSpinnerText(spinner, 'Uploading to vector database...');
-            
+
             // Create the LLM provider instance
             const provider = LLMFactory.createProvider(llmConfig);
-            
+
             const uploadResult = await uploadToVectorDB({
               collectionName: 'openapi-spec-docs',
               documents: extractedInfo,
+              // We pass provider, because depending on what
+              // LLM the user selected, the embedding model/dimensions are different
               provider,
               verbose: options.verbose,
             });
