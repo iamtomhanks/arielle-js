@@ -7,6 +7,7 @@ import { UI } from '../utils/ui.js';
 import { createProcessingSpinner, displayRawResults, extractAndSaveToJSON, getOpenAPISpecPath, loadAndValidateSpec, succeedSpinner, updateSpinnerText, } from './steps/open-api-spec-parsing/index.js';
 import { ensureChromaDBServer } from './steps/vector-db-insert/startChromaDB.js';
 import { uploadToVectorDB } from './steps/vector-db-insert/uploadToVectorDB.js';
+import { promptForLLMSelection } from './steps/llm-selection/prompts.js';
 export const startCommand = new Command('start')
     .description('Start the ArielleJS wizard')
     .option('--verbose', 'Enable verbose logging', false)
@@ -26,6 +27,11 @@ export const startCommand = new Command('start')
     const logger = Logger.getInstance(options.verbose);
     const apiService = new APIService(options.verbose);
     const interactionService = new InteractionService();
+    // Get LLM selection from user
+    const llmConfig = await promptForLLMSelection();
+    logger.debug('LLM configuration:', JSON.stringify(llmConfig, null, 2));
+    // Store the LLM configuration in the API service or config
+    apiService.setLLMConfig(llmConfig);
     await withErrorHandling(async () => {
         let spinner = null;
         let specPath = options.spec;

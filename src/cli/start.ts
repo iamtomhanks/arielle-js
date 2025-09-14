@@ -16,6 +16,7 @@ import {
 } from './steps/open-api-spec-parsing/index.js';
 import { ensureChromaDBServer } from './steps/vector-db-insert/startChromaDB.js';
 import { uploadToVectorDB } from './steps/vector-db-insert/uploadToVectorDB.js';
+import { promptForLLMSelection } from './steps/llm-selection/prompts.js';
 
 interface StartOptions {
   verbose: boolean;
@@ -55,6 +56,13 @@ export const startCommand = new Command('start')
     const logger = Logger.getInstance(options.verbose);
     const apiService = new APIService(options.verbose);
     const interactionService = new InteractionService();
+
+    // Get LLM selection from user
+    const llmConfig = await promptForLLMSelection();
+    logger.debug('LLM configuration:', JSON.stringify(llmConfig, null, 2));
+
+    // Store the LLM configuration in the API service or config
+    apiService.setLLMConfig(llmConfig);
 
     await withErrorHandling(
       async () => {

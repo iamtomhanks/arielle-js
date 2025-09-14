@@ -6,9 +6,11 @@ import { validateFullOpenAPISpec } from '../../openapi/validator.js';
 import { Logger } from '../../utils/logger.js';
 import { ExtractedEndpointInfoEmbeddingFormat, ExtractionService } from './extraction-service.js';
 import type { APIInfo, ProcessedEndpoint } from './types.js';
+import type { LLMConfig } from '../../cli/steps/llm-selection/types.js';
 
 export class APIService {
   private logger: Logger;
+  private llmConfig: LLMConfig | null = null;
 
   constructor(verbose = false) {
     this.logger = Logger.getInstance(verbose);
@@ -201,6 +203,22 @@ export class APIService {
     const extractionService = new ExtractionService();
     const extracted = extractionService.extractEndpointInfo(endpoints);
     return extractionService.formatForEmbedding(extracted);
+  }
+
+  /**
+   * Set the LLM configuration for this service
+   * @param config The LLM configuration to use
+   */
+  setLLMConfig(config: LLMConfig): void {
+    this.llmConfig = config;
+    this.logger.debug('LLM configuration updated:', JSON.stringify(config, null, 2));
+  }
+
+  /**
+   * Get the current LLM configuration
+   */
+  getLLMConfig(): LLMConfig | null {
+    return this.llmConfig;
   }
 }
 

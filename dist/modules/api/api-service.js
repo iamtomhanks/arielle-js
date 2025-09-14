@@ -5,6 +5,7 @@ import { Logger } from '../../utils/logger.js';
 import { ExtractionService } from './extraction-service.js';
 export class APIService {
     constructor(verbose = false) {
+        this.llmConfig = null;
         this.logger = Logger.getInstance(verbose);
     }
     async loadAndValidateSpec(specPath) {
@@ -173,6 +174,20 @@ export class APIService {
         const extractionService = new ExtractionService();
         const extracted = extractionService.extractEndpointInfo(endpoints);
         return extractionService.formatForEmbedding(extracted);
+    }
+    /**
+     * Set the LLM configuration for this service
+     * @param config The LLM configuration to use
+     */
+    setLLMConfig(config) {
+        this.llmConfig = config;
+        this.logger.debug('LLM configuration updated:', JSON.stringify(config, null, 2));
+    }
+    /**
+     * Get the current LLM configuration
+     */
+    getLLMConfig() {
+        return this.llmConfig;
     }
 }
 export default APIService;
