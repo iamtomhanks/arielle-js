@@ -15,12 +15,17 @@ export interface UploadToVectorDBResult {
   error?: string;
 }
 
-export async function uploadToVectorDB(
-  collectionName: string,
-  documents: ExtractedEndpointInfoEmbeddingFormat[],
-  provider: BaseLLMProvider,
-  verbose = false
-): Promise<UploadToVectorDBResult> {
+export async function uploadToVectorDB({
+  collectionName,
+  documents,
+  provider,
+  verbose = false,
+}: {
+  collectionName: string;
+  documents: ExtractedEndpointInfoEmbeddingFormat[];
+  provider: BaseLLMProvider;
+  verbose: boolean;
+}): Promise<UploadToVectorDBResult> {
   const logger = Logger.getInstance(verbose);
 
   try {

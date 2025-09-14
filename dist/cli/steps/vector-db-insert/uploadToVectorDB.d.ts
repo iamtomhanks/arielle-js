@@ -5,4 +5,9 @@ export interface UploadToVectorDBResult {
     collection?: any;
     error?: string;
 }
-export declare function uploadToVectorDB(collectionName: string, documents: ExtractedEndpointInfoEmbeddingFormat[], provider: BaseLLMProvider, verbose?: boolean): Promise<UploadToVectorDBResult>;
+export declare function uploadToVectorDB({ collectionName, documents, provider, verbose, }: {
+    collectionName: string;
+    documents: ExtractedEndpointInfoEmbeddingFormat[];
+    provider: BaseLLMProvider;
+    verbose: boolean;
+}): Promise<UploadToVectorDBResult>;

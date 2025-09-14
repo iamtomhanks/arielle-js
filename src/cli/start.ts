@@ -7,6 +7,7 @@ import { Logger } from '../utils/logger.js';
 import { UI } from '../utils/ui.js';
 import { promptForLLMSelection } from './steps/llm-selection/prompts.js';
 import { LLMService } from './steps/llm/llm-service.js';
+import { LLMFactory } from './steps/llm/llm-factory.js';
 import {
   createProcessingSpinner,
   displayRawResults,
@@ -45,7 +46,10 @@ export const startCommand = new Command('start')
   .option('--no-vector', 'Disable vector database indexing', false)
   .option('--clear-cache', 'Clear existing vector database cache', false)
   .option('--search <query>', 'Search for endpoints matching the query')
-  .option('--embedding-model <model>', 'Embedding model to use (e.g., text-embedding-3-small, text-embedding-004)')
+  .option(
+    '--embedding-model <model>',
+    'Embedding model to use (e.g., text-embedding-3-small, text-embedding-004)'
+  )
   .action(async (options: StartOptions) => {
     // Show beautiful banner - this includes the welcome message
     UI.showBanner();
@@ -121,11 +125,16 @@ export const startCommand = new Command('start')
             }
 
             updateSpinnerText(spinner, 'Uploading to vector database...');
-            const uploadResult = await uploadToVectorDB(
-              'openapi-spec-docs',
-              extractedInfo,
-              options.verbose
-            );
+            
+            // Create the LLM provider instance
+            const provider = LLMFactory.createProvider(llmConfig);
+            
+            const uploadResult = await uploadToVectorDB({
+              collectionName: 'openapi-spec-docs',
+              documents: extractedInfo,
+              provider,
+              verbose: options.verbose,
+            });
 
             if (!uploadResult.success || !uploadResult.collection) {
               throw new Error(uploadResult.error || 'Failed to upload to vector database');
@@ -135,16 +144,7 @@ export const startCommand = new Command('start')
 
             // Phase 4 - Start LLM query interface
             try {
-              const selectedProvider = llmConfig.provider;
-              const llmService = new LLMService({
-                provider: selectedProvider,
-                config: {
-                  apiKey: process.env[`${selectedProvider.toUpperCase()}_API_KEY`] || '',
-                  baseUrl: process.env[`${selectedProvider.toUpperCase()}_BASE_URL`],
-                  model: process.env[`${selectedProvider.toUpperCase()}_MODEL`],
-                  embeddingModel: options.embeddingModel || 'text-embedding-3-small',
-                },
-              });
+              const llmService = new LLMService(collection, llmConfig);
 
               // Clear the spinner before starting the conversation
               spinner?.stop();

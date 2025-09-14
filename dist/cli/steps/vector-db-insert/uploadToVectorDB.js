@@ -5,7 +5,7 @@ import { Logger } from '../../../utils/logger.js';
 const client = new ChromaClient({
     path: 'http://localhost:8000',
 });
-export async function uploadToVectorDB(collectionName, documents, provider, verbose = false) {
+export async function uploadToVectorDB({ collectionName, documents, provider, verbose = false, }) {
     const logger = Logger.getInstance(verbose);
     try {
         // Check server connectivity

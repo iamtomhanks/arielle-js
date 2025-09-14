@@ -6,6 +6,7 @@ import { Logger } from '../utils/logger.js';
 import { UI } from '../utils/ui.js';
 import { promptForLLMSelection } from './steps/llm-selection/prompts.js';
 import { LLMService } from './steps/llm/llm-service.js';
+import { LLMFactory } from './steps/llm/llm-factory.js';
 import { createProcessingSpinner, displayRawResults, extractAndSaveToJSON, getOpenAPISpecPath, loadAndValidateSpec, succeedSpinner, updateSpinnerText, } from './steps/open-api-spec-parsing/index.js';
 import { ensureChromaDBServer } from './steps/vector-db-insert/startChromaDB.js';
 import { uploadToVectorDB } from './steps/vector-db-insert/uploadToVectorDB.js';
@@ -77,23 +78,21 @@ export const startCommand = new Command('start')
                     throw new Error('Failed to start ChromaDB server');
                 }
                 updateSpinnerText(spinner, 'Uploading to vector database...');
-                const uploadResult = await uploadToVectorDB('openapi-spec-docs', extractedInfo, options.verbose);
+                // Create the LLM provider instance
+                const provider = LLMFactory.createProvider(llmConfig);
+                const uploadResult = await uploadToVectorDB({
+                    collectionName: 'openapi-spec-docs',
+                    documents: extractedInfo,
+                    provider,
+                    verbose: options.verbose,
+                });
                 if (!uploadResult.success || !uploadResult.collection) {
                     throw new Error(uploadResult.error || 'Failed to upload to vector database');
                 }
                 collection = uploadResult.collection;
                 // Phase 4 - Start LLM query interface
                 try {
-                    const selectedProvider = llmConfig.provider;
-                    const llmService = new LLMService({
-                        provider: selectedProvider,
-                        config: {
-                            apiKey: process.env[`${selectedProvider.toUpperCase()}_API_KEY`] || '',
-                            baseUrl: process.env[`${selectedProvider.toUpperCase()}_BASE_URL`],
-                            model: process.env[`${selectedProvider.toUpperCase()}_MODEL`],
-                            embeddingModel: options.embeddingModel || 'text-embedding-3-small',
-                        },
-                    });
+                    const llmService = new LLMService(collection, llmConfig);
                     // Clear the spinner before starting the conversation
                     spinner?.stop();
                     // Start the interactive conversation
