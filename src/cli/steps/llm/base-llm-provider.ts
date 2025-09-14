@@ -5,9 +5,10 @@ import {
   validateEmbeddingDimensions,
 } from './embedding-models.js';
 import { LLMProviderInterface, LLMQueryOptions, LLMQueryResult } from './types/llm.types.js';
+import { vectorSearch } from './vector-search.js';
 
 export abstract class BaseLLMProvider implements LLMProviderInterface {
-  protected readonly logger: Logger;
+  public readonly logger: Logger;
   protected readonly config: any;
   protected readonly providerName: string;
   public embeddingModel: string;
@@ -74,69 +75,19 @@ export abstract class BaseLLMProvider implements LLMProviderInterface {
 
   protected async retrieveContext(collection: any, query: string): Promise<string> {
     try {
-      console.log('\n🔍 Attempting to query ChromaDB with query:', query);
+      // Use the vectorSearch function to perform the search
+      const results = await vectorSearch({
+        collection,
+        query,
+        generateEmbeddings: this.generateEmbeddings.bind(this),
+        maxResults: 5,
+        include: ['documents', 'metadatas', 'distances'],
+      });
 
-      // Step 1: Verify collection is valid
-      if (!collection) {
-        throw new Error('Collection is null or undefined');
-      }
-
-      // Step 2: Verify collection has data
-      let collectionInfo;
-      try {
-        collectionInfo = await collection.get();
-        console.log('📊 Collection info:', {
-          documentCount: collectionInfo.ids?.length || 0,
-          firstDocumentId: collectionInfo.ids?.[0],
-          firstDocumentLength: collectionInfo.documents?.[0]?.length,
-          metadata: collectionInfo.metadatas?.[0],
-        });
-
-        if (!collectionInfo.ids || collectionInfo.ids.length === 0) {
-          console.warn('⚠️ Collection is empty');
-          return '';
-        }
-      } catch (collectionError: any) {
-        console.error('❌ Error getting collection info:', collectionError);
-        throw new Error(`Failed to access collection: ${collectionError.message}`);
-      }
-
-      // Step 3: Execute the query with error handling
-      let results;
-      try {
-        console.log('🔍 Executing query with params:', {
-          queryTexts: [query],
-          nResults: 5,
-          include: ['documents', 'metadatas', 'distances'],
-        });
-
-        results = await collection.query({
-          queryTexts: [query],
-          nResults: Math.min(5, collectionInfo.ids.length), // Don't ask for more than available
-          include: ['documents', 'metadatas', 'distances'],
-        });
-
-        console.log('✅ Query executed successfully');
-      } catch (queryError: any) {
-        console.error('❌ Query failed:', queryError);
-
-        // Try a simpler query to diagnose the issue
-        try {
-          console.log('🔄 Attempting simpler query...');
-          const testResults = await collection.query({
-            queryTexts: [query],
-            nResults: 1,
-            include: ['documents'],
-          });
-          console.log('✅ Simple query succeeded:', {
-            hasDocuments: !!testResults.documents,
-            docCount: testResults.documents?.[0]?.length || 0,
-          });
-        } catch (simpleQueryError) {
-          console.error('❌ Simple query also failed:', simpleQueryError);
-        }
-
-        throw new Error(`Query failed: ${queryError.message}`);
+      // If no results, return early
+      if (!results.ids?.[0]?.length) {
+        console.log('ℹ️  No matching documents found');
+        return '';
       }
 
       // Step 4: Process results with detailed validation

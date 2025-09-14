@@ -5,8 +5,8 @@ import { withErrorHandling } from '../utils/error-handler.js';
 import { Logger } from '../utils/logger.js';
 import { UI } from '../utils/ui.js';
 import { promptForLLMSelection } from './steps/llm-selection/prompts.js';
-import { LLMService } from './steps/llm/llm-service.js';
 import { LLMFactory } from './steps/llm/llm-factory.js';
+import { LLMService } from './steps/llm/llm-service.js';
 import { createProcessingSpinner, displayRawResults, extractAndSaveToJSON, getOpenAPISpecPath, loadAndValidateSpec, succeedSpinner, updateSpinnerText, } from './steps/open-api-spec-parsing/index.js';
 import { ensureChromaDBServer } from './steps/vector-db-insert/startChromaDB.js';
 import { uploadToVectorDB } from './steps/vector-db-insert/uploadToVectorDB.js';
@@ -83,6 +83,8 @@ export const startCommand = new Command('start')
                 const uploadResult = await uploadToVectorDB({
                     collectionName: 'openapi-spec-docs',
                     documents: extractedInfo,
+                    // We pass provider, because depending on what
+                    // LLM the user selected, the embedding model/dimensions are different
                     provider,
                     verbose: options.verbose,
                 });

@@ -4,7 +4,7 @@ export { chalk };
 
 export class Logger {
   private static instance: Logger;
-  private isVerbose: boolean;
+  public isVerbose: boolean;
 
   private constructor(verbose = false) {
     this.isVerbose = verbose;

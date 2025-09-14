@@ -2,7 +2,7 @@ import chalk from 'chalk';
 export { chalk };
 export declare class Logger {
     private static instance;
-    private isVerbose;
+    isVerbose: boolean;
     private constructor();
     static getInstance(verbose?: boolean): Logger;
     info(message: string): void;

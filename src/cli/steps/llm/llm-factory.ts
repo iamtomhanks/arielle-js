@@ -11,7 +11,7 @@ export class LLMFactory {
     const defaultModels = {
       openai: 'text-embedding-3-small',
       google: 'text-embedding-004',
-      selfhosted: 'all-mpnet-base-v2' // Example for self-hosted
+      selfhosted: 'all-mpnet-base-v2', // Example for self-hosted
     };
 
     return defaultModels[provider as keyof typeof defaultModels] || 'text-embedding-3-small';
@@ -32,7 +32,7 @@ export class LLMFactory {
     const providerConfig = {
       ...commonConfig,
       embeddingModel: config.embeddingModel || this.getDefaultEmbeddingModel(config.provider),
-      openaiApiKey: config.openaiApiKey
+      openaiApiKey: config.openaiApiKey,
     };
 
     switch (config.provider) {
