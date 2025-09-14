@@ -45,8 +45,24 @@ export class LLMService {
     // Add user query to conversation history
     this.conversationHistory.push({ role: 'user', content: query });
 
+    // Verify collection is valid
+    if (!this.collection) {
+      throw new Error('No ChromaDB collection available for querying');
+    }
+
+    try {
+      // Try to get collection info to verify it's accessible
+      const info = await this.collection.get();
+      console.log(`\nℹ️  Collection contains ${info.ids?.length || 0} documents`);
+    } catch (error) {
+      console.error('\n❌ Error accessing ChromaDB collection:', error);
+      throw new Error('Failed to access document database. Please make sure the API documentation was properly loaded.');
+    }
+
     // Create the LLM provider
     const provider = LLMFactory.createProvider(this.llmConfig);
+    
+    console.log(`\n🔍 Searching documentation for: ${query}`);
 
     // Query the LLM with conversation context
     const result = await provider.query({

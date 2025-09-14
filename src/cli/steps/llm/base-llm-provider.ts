@@ -37,20 +37,25 @@ export abstract class BaseLLMProvider implements LLMProviderInterface {
         nResults: 5,
       });
 
-      if (!results.documents || results.documents.length === 0) {
+      if (!results.documents || results.documents.length === 0 || !results.documents[0].length) {
+        this.logger.debug('No documents found in ChromaDB query results');
         return 'No relevant context found.';
       }
 
       // Format the context from the query results
-      return results.documents[0]
+      const formattedContext = results.documents[0]
         .map((doc: string, i: number) => {
           const metadata = results.metadatas?.[0]?.[i] || {};
-          return `Document ${i + 1} (Score: ${results.distances?.[0]?.[i]?.toFixed(2) || 'N/A'}):
+          const distance = results.distances?.[0]?.[i];
+          const score = distance !== undefined ? (1 - distance).toFixed(2) : 'N/A';
+          return `Document ${i + 1} (Relevance: ${score}):
 ${doc}
-Metadata: ${JSON.stringify(metadata, null, 2)}
-`;
+Metadata: ${JSON.stringify(metadata, null, 2)}`;
         })
-        .join('\n---\n');
+        .join('\n\n---\n\n');
+
+      this.logger.debug('Retrieved context from ChromaDB:', formattedContext);
+      return formattedContext;
     } catch (error) {
       this.logger.error('Error retrieving context from ChromaDB:', error);
       return 'Error retrieving relevant context.';

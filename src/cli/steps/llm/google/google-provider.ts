@@ -33,22 +33,43 @@ export class GoogleGenerativeAIProvider extends BaseLLMProvider {
       throw new Error('Google Generative AI provider is not properly configured');
     }
 
+    this.logger.debug('Starting Google Generative AI query with options:', {
+      query: options.query,
+      contextKeys: Object.keys(options.context || {}),
+      model: this.model.model,
+    });
+
     const { collection, query, context = {} } = options;
 
     try {
       // Retrieve relevant context from ChromaDB
       const contextText = await this.retrieveContext(collection, query);
 
-      // Construct the prompt with context
-      const prompt = `You are a helpful assistant that helps users find and understand API endpoints.
-Use the following context to answer the user's question. If you don't know the answer, say so.
+      // Get conversation history if available
+      const conversationHistory = context.conversationHistory || [];
 
-Context:
+      // Build the conversation history for context
+      const historyText = conversationHistory
+        .map((msg: any) => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
+        .join('\n\n');
+
+      // Construct the prompt with context and conversation history
+      const prompt = `You are a helpful assistant that helps users find and understand API endpoints.
+Use the following context from the API documentation to answer the user's question.
+If you don't know the answer based on the context, say so.
+
+${historyText ? 'Previous Conversation:\n' + historyText + '\n\n' : ''}Relevant API Documentation:
 ${contextText}
 
-User Question: ${query}
+Current Question: ${query}
 
-Answer:`;
+Answer the question based on the API documentation above. If the information isn't in the documentation, say so.`;
+
+      // Log the prompt being sent to the model
+      this.logger.debug('Sending prompt to Google Generative AI:', {
+        promptLength: prompt.length,
+        promptPreview: prompt.substring(0, 200) + (prompt.length > 200 ? '...' : ''),
+      });
 
       // Generate content
       const result = await this.model.generateContent({
@@ -58,6 +79,11 @@ Answer:`;
 
       const response = await result.response;
       const answer = response.text();
+
+      this.logger.debug('Received response from Google Generative AI:', {
+        answerLength: answer.length,
+        answerPreview: answer.substring(0, 200) + (answer.length > 200 ? '...' : ''),
+      });
 
       return {
         answer,
