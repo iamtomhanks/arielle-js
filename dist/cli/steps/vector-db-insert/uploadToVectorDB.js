@@ -88,34 +88,38 @@ export async function uploadToVectorDB(collectionName, documents, verbose = fals
             // Verify the count
             const count = await collection.count();
             logger.info(chalk.green(`✅ Successfully uploaded ${count} documents to collection '${collectionName}'`));
-            return true;
+            return {
+                success: true,
+                collection: collection
+            };
         }
         catch (uploadError) {
+            const errorMessage = uploadError instanceof Error ? uploadError.message : 'Unknown error';
             logger.error(chalk.red('❌ Failed to upload documents to ChromaDB:'));
-            if (uploadError instanceof Error) {
-                logger.error(chalk.red(`- ${uploadError.message}`));
-                if (verbose && uploadError.stack) {
-                    logger.debug(chalk.gray(uploadError.stack));
-                }
+            logger.error(chalk.red(`- ${errorMessage}`));
+            if (verbose && uploadError instanceof Error && uploadError.stack) {
+                logger.debug(chalk.gray(uploadError.stack));
             }
-            return false;
+            return {
+                success: false,
+                error: errorMessage
+            };
         }
     }
     catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         logger.error(chalk.red('❌ Error with ChromaDB:'));
-        if (error instanceof Error) {
-            logger.error(chalk.red(`- ${error.message}`));
-            if (verbose && error.stack) {
-                logger.debug(chalk.gray(error.stack));
-            }
+        logger.error(chalk.red(`- ${errorMessage}`));
+        if (verbose && error instanceof Error && error.stack) {
+            logger.debug(chalk.gray(error.stack));
         }
-        else {
-            logger.error(chalk.red('- Unknown error occurred'));
-            if (verbose) {
-                logger.debug(chalk.gray(String(error)));
-            }
+        else if (verbose) {
+            logger.debug(chalk.gray(String(error)));
         }
-        return false;
+        return {
+            success: false,
+            error: errorMessage
+        };
     }
     //   });
     //   logger.debug(
