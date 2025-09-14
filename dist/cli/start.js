@@ -4,11 +4,11 @@ import { InteractionService } from '../modules/cli/interaction-service.js';
 import { withErrorHandling } from '../utils/error-handler.js';
 import { Logger } from '../utils/logger.js';
 import { UI } from '../utils/ui.js';
+import { promptForLLMSelection } from './steps/llm-selection/prompts.js';
+import { LLMService } from './steps/llm/llm-service.js';
 import { createProcessingSpinner, displayRawResults, extractAndSaveToJSON, getOpenAPISpecPath, loadAndValidateSpec, succeedSpinner, updateSpinnerText, } from './steps/open-api-spec-parsing/index.js';
 import { ensureChromaDBServer } from './steps/vector-db-insert/startChromaDB.js';
 import { uploadToVectorDB } from './steps/vector-db-insert/uploadToVectorDB.js';
-import { promptForLLMSelection } from './steps/llm-selection/prompts.js';
-import { LLMService } from './steps/llm/llm-service.js';
 export const startCommand = new Command('start')
     .description('Start the ArielleJS wizard')
     .option('--verbose', 'Enable verbose logging', false)
@@ -86,7 +86,7 @@ export const startCommand = new Command('start')
                     const llmService = new LLMService(collection, {
                         provider: llmConfig.provider,
                         apiKey: llmConfig.apiKey,
-                        model: llmConfig.provider === 'openai' ? 'gpt-4' : 'gemini-pro',
+                        // model: llmConfig.provider === 'openai' ? 'gpt-4' : 'gemini-pro',
                     });
                     // Clear the spinner before starting the conversation
                     spinner?.stop();

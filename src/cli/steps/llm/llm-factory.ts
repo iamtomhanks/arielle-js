@@ -1,7 +1,7 @@
-import { OpenAIProvider } from './openai/openai-provider.js';
-import { GoogleGenerativeAIProvider } from './google/google-provider.js';
 import { BaseLLMProvider } from './base-llm-provider.js';
-import { LLMConfig, LLMProvider } from './types/llm.types.js';
+import { GoogleGenerativeAIProvider } from './google/google-provider.js';
+import { OpenAIProvider } from './openai/openai-provider.js';
+import { LLMConfig } from './types/llm.types.js';
 
 export class LLMFactory {
   static createProvider(config: LLMConfig): BaseLLMProvider {
@@ -19,16 +19,16 @@ export class LLMFactory {
           model: config.model || 'gpt-4',
           baseUrl: config.baseUrl,
         });
-      
+
       case 'google':
         return new GoogleGenerativeAIProvider({
           ...commonConfig,
-          model: config.model || 'gemini-pro',
+          model: config.model || 'gemini-1.5-flash-latest',
         });
-      
+
       case 'selfhosted':
         throw new Error('Self-hosted LLM provider is not yet implemented');
-      
+
       default:
         throw new Error(`Unsupported LLM provider: ${config.provider}`);
     }

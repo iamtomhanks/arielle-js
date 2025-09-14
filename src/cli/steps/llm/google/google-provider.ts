@@ -8,15 +8,15 @@ export class GoogleGenerativeAIProvider extends BaseLLMProvider {
 
   constructor(config: any) {
     super(config, 'Google Generative AI');
-    
+
     // Initialize the Google Generative AI client
     const genAI = new GoogleGenerativeAI(config.apiKey);
-    
+
     // Initialize the model
     this.model = genAI.getGenerativeModel({
-      model: config.model || 'gemini-pro',
+      model: config.model || 'gemini-1.5-flash-latest',
     });
-    
+
     // Set generation configuration
     this.generationConfig = {
       temperature: config.temperature || 0.7,
@@ -34,11 +34,11 @@ export class GoogleGenerativeAIProvider extends BaseLLMProvider {
     }
 
     const { collection, query, context = {} } = options;
-    
+
     try {
       // Retrieve relevant context from ChromaDB
       const contextText = await this.retrieveContext(collection, query);
-      
+
       // Construct the prompt with context
       const prompt = `You are a helpful assistant that helps users find and understand API endpoints.
 Use the following context to answer the user's question. If you don't know the answer, say so.
@@ -55,10 +55,10 @@ Answer:`;
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: this.generationConfig,
       });
-      
+
       const response = await result.response;
       const answer = response.text();
-      
+
       return {
         answer,
         sources: [], // We can extract sources from context if needed

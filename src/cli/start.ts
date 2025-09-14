@@ -5,6 +5,8 @@ import { InteractionService } from '../modules/cli/interaction-service.js';
 import { withErrorHandling } from '../utils/error-handler.js';
 import { Logger } from '../utils/logger.js';
 import { UI } from '../utils/ui.js';
+import { promptForLLMSelection } from './steps/llm-selection/prompts.js';
+import { LLMService } from './steps/llm/llm-service.js';
 import {
   createProcessingSpinner,
   displayRawResults,
@@ -16,9 +18,6 @@ import {
 } from './steps/open-api-spec-parsing/index.js';
 import { ensureChromaDBServer } from './steps/vector-db-insert/startChromaDB.js';
 import { uploadToVectorDB } from './steps/vector-db-insert/uploadToVectorDB.js';
-import { promptForLLMSelection } from './steps/llm-selection/prompts.js';
-import { LLMService } from './steps/llm/llm-service.js';
-import type { LLMConfig as LLMSelectionConfig } from './steps/llm-selection/types.js';
 
 interface StartOptions {
   verbose: boolean;
@@ -129,7 +128,7 @@ export const startCommand = new Command('start')
             if (!uploadResult.success || !uploadResult.collection) {
               throw new Error(uploadResult.error || 'Failed to upload to vector database');
             }
-            
+
             collection = uploadResult.collection;
 
             // Phase 4 - Start LLM query interface
@@ -137,22 +136,21 @@ export const startCommand = new Command('start')
               const llmService = new LLMService(collection, {
                 provider: llmConfig.provider,
                 apiKey: llmConfig.apiKey,
-                model: llmConfig.provider === 'openai' ? 'gpt-4' : 'gemini-pro',
+                // model: llmConfig.provider === 'openai' ? 'gpt-4' : 'gemini-pro',
               });
-              
+
               // Clear the spinner before starting the conversation
               spinner?.stop();
-              
+
               // Start the interactive conversation
               await llmService.startConversation();
-              
+
               // Re-create the spinner if we need to continue with other operations
               spinner = createProcessingSpinner('Finishing up...');
             } catch (error) {
               logger.error('Error in LLM service:', error);
               throw error;
             }
-
           } catch (error) {
             if (error instanceof Error) {
               logger.warn(`Skipping vector database operations: ${error.message}`);
