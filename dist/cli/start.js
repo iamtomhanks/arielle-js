@@ -84,9 +84,9 @@ export const startCommand = new Command('start')
                 // Phase 4 - Start LLM query interface
                 try {
                     const llmService = new LLMService(collection, {
-                        provider: llmConfig.provider === 'local' ? 'selfhosted' : 'openai',
-                        apiKey: llmConfig.provider === 'local' ? undefined : llmConfig.openAIApiKey,
-                        model: 'gpt-4',
+                        provider: llmConfig.provider,
+                        apiKey: llmConfig.apiKey,
+                        model: llmConfig.provider === 'openai' ? 'gpt-4' : 'gemini-pro',
                     });
                     // Clear the spinner before starting the conversation
                     spinner?.stop();

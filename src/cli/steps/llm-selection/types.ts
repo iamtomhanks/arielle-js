@@ -1,11 +1,6 @@
-export type LLMProvider = 'local' | 'openai';
+export type LLMProvider = 'selfhosted' | 'openai' | 'google';
 
 export interface LLMConfig {
   provider: LLMProvider;
-  openAIApiKey?: string;
-}
-
-export interface LLMSelectionOptions {
-  useLocalLLM: boolean;
-  openAIApiKey?: string;
+  apiKey?: string;
 }

@@ -1,6 +1,6 @@
 import { Collection } from 'chromadb';
 
-export type LLMProvider = 'openai' | 'selfhosted';
+export type LLMProvider = 'openai' | 'google' | 'selfhosted';
 
 export interface LLMQueryResult {
   answer: string;
