@@ -5,6 +5,7 @@ import { withErrorHandling } from '../utils/error-handler.js';
 import { Logger } from '../utils/logger.js';
 import { UI } from '../utils/ui.js';
 import { createProcessingSpinner, displayRawResults, extractAndSaveToJSON, getOpenAPISpecPath, loadAndValidateSpec, succeedSpinner, updateSpinnerText, } from './steps/open-api-spec-parsing/index.js';
+import { ensureChromaDBServer } from './steps/vector-db-insert/startChromaDB.js';
 import { uploadToVectorDB } from './steps/vector-db-insert/uploadToVectorDB.js';
 export const startCommand = new Command('start')
     .description('Start the ArielleJS wizard')
@@ -55,10 +56,33 @@ export const startCommand = new Command('start')
                 spinner,
             });
             // Phase 3 - Vector database integration
-            updateSpinnerText(spinner, 'Uploading to vector database...');
-            const uploadSuccess = await uploadToVectorDB('openapi-spec-docs', extractedInfo, options.verbose);
-            if (!uploadSuccess) {
-                logger.warn('Vector database upload had issues, but continuing with file export...');
+            updateSpinnerText(spinner, 'Starting ChromaDB server...');
+            try {
+                const dbStarted = await ensureChromaDBServer({
+                    host: 'localhost',
+                    port: 8000,
+                    path: './ariellejs-chroma-db-data',
+                    verbose: options.verbose,
+                });
+                if (!dbStarted) {
+                    throw new Error('Failed to start ChromaDB server');
+                }
+                updateSpinnerText(spinner, 'Uploading to vector database...');
+                const uploadSuccess = await uploadToVectorDB('openapi-spec-docs', extractedInfo, options.verbose);
+                if (!uploadSuccess) {
+                    logger.warn('Vector database upload had issues, but continuing with file export...');
+                }
+            }
+            catch (error) {
+                if (error instanceof Error) {
+                    logger.warn(`Skipping vector database upload: ${error.message}`);
+                }
+                else {
+                    logger.warn('Skipping vector database upload due to an error');
+                }
+                if (options.verbose) {
+                    console.error(error);
+                }
             }
             succeedSpinner(spinner, `Extraction complete. Saved to ${outputPath}`);
             interactionService.displayCompletionMessage();
