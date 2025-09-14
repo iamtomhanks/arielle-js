@@ -34,6 +34,9 @@ export function getEmbeddingDimensions(modelName: string): number {
   return model.dimensions;
 }
 
-export function validateEmbeddingDimensions(embedding: number[], expectedDimensions: number): boolean {
+export function validateEmbeddingDimensions(
+  embedding: number[],
+  expectedDimensions: number
+): boolean {
   return embedding.length === expectedDimensions;
 }

@@ -8,8 +8,13 @@ const client = new ChromaClient({
 export async function uploadToVectorDB({ collectionName, documents, provider, verbose = false, }) {
     const logger = Logger.getInstance(verbose);
     try {
+        // Log provider details
+        logger.info(chalk.blue('Provider Configuration:'));
+        logger.info(chalk.blue(`- Provider: ${provider.constructor.name}`));
+        logger.info(chalk.blue(`- Embedding Model: ${provider.embeddingModel}`));
+        logger.info(chalk.blue(`- Embedding Dimensions: ${provider.embeddingDimensions}`));
         // Check server connectivity
-        logger.info(chalk.blue('Testing ChromaDB connection...'));
+        logger.info(chalk.blue('\nTesting ChromaDB connection...'));
         try {
             const heartbeat = await client.heartbeat();
             logger.info(chalk.green(`✓ ChromaDB Heartbeat response: ${JSON.stringify(heartbeat)}`));
@@ -58,6 +63,12 @@ export async function uploadToVectorDB({ collectionName, documents, provider, ve
                 embedding_model: provider.embeddingModel,
                 embedding_dimensions: provider.embeddingDimensions,
             };
+            // Log collection creation details
+            console.log(chalk.blue('\nCollection Configuration:'));
+            console.log(chalk.blue(`- Name: ${collectionName}`));
+            console.log(chalk.blue(`- Embedding Model: ${metadata.embedding_model}`));
+            console.log(chalk.blue(`- Embedding Dimensions: ${metadata.embedding_dimensions}`));
+            console.log(chalk.blue(`- Similarity Metric: ${metadata['hnsw:space']}\n`));
             collection = await client.createCollection({
                 name: collectionName,
                 metadata,
