@@ -7,7 +7,7 @@ import { Logger } from '../utils/logger.js';
 import { UI } from '../utils/ui.js';
 import { promptForLLMSelection } from './steps/llm-selection/prompts.js';
 import { LLMFactory } from './steps/llm/llm-factory.js';
-import { LLMService } from './steps/llm/llm-service.js';
+import { LLMService } from './steps/llm/llm-service/index.js';
 import {
   createProcessingSpinner,
   displayRawResults,
@@ -146,16 +146,36 @@ export const startCommand = new Command('start')
 
             // Phase 4 - Start LLM query interface
             try {
-              const llmService = new LLMService(collection, llmConfig);
+              const llmService = new LLMService({ collection, llmConfig });
 
               // Clear the spinner before starting the conversation
               spinner?.stop();
 
-              // Start the interactive conversation
-              await llmService.startConversation();
+              // Start the interactive conversation loop
+              const readline = require('readline').createInterface({
+                input: process.stdin,
+                output: process.stdout,
+              });
+
+              const askQuestion = () => {
+                readline.question('\n🤔 You: ', async (query: string) => {
+                  if (query.toLowerCase() === 'exit' || query.toLowerCase() === 'quit') {
+                    readline.close();
+                    return;
+                  }
+
+                  await llmService.processQuery(query);
+                  askQuestion(); // Continue the conversation
+                });
+              };
+
+              console.log(
+                '\n💬 Start chatting with Arielle! Type "exit" or "quit" to end the session.'
+              );
+              askQuestion();
 
               // Re-create the spinner if we need to continue with other operations
-              spinner = createProcessingSpinner('Finishing up...');
+              spinner = createProcessingSpinner('Waiting for input...');
             } catch (error) {
               logger.error('Error in LLM service:', error);
               throw error;

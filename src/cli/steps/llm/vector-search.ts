@@ -1,4 +1,4 @@
-import { Collection } from 'chromadb';
+import { Collection, IncludeEnum } from 'chromadb';
 import { Logger } from '../../../utils/logger.js';
 
 const logger = Logger.getInstance(!!process.env.DEBUG);
@@ -16,25 +16,25 @@ export async function vectorSearch({
   query,
   generateEmbeddings,
   maxResults = 5,
-  include = ['documents', 'metadatas', 'distances']
+  include = [IncludeEnum['documents'], IncludeEnum['metadatas'], IncludeEnum['distances']],
 }: {
   collection: Collection;
   query: string;
   generateEmbeddings: (text: string) => Promise<number[]>;
   maxResults?: number;
-  include?: string[];
+  include?: IncludeEnum[];
 }) {
   try {
     logger.info(`🔍 Starting vector search for query: ${query.substring(0, 100)}...`);
-    
+
     // Generate embeddings for the query
     logger.debug('Generating query embeddings...');
     const queryEmbedding = await generateEmbeddings(query);
-    
+
     if (!queryEmbedding || !queryEmbedding.length) {
       throw new Error('Failed to generate embeddings for the query');
     }
-    
+
     logger.info(`✅ Generated query embedding with ${queryEmbedding.length} dimensions`);
 
     // Execute the search
@@ -43,9 +43,9 @@ export async function vectorSearch({
       nResults: maxResults,
       include,
     });
-    
+
     return results;
-  } catch (error) {
+  } catch (error: any) {
     logger.error('Error in vector search:', error);
     throw new Error(`Vector search failed: ${error.message}`);
   }
@@ -64,27 +64,31 @@ export async function batchVectorSearch({
   queries,
   generateEmbeddings,
   maxResults = 5,
-  include = ['documents', 'metadatas', 'distances'],
-  batchSize = 5
+  include = [IncludeEnum['documents'], IncludeEnum['metadatas'], IncludeEnum['distances']],
+  batchSize = 5,
 }: {
   collection: Collection;
   queries: string[];
   generateEmbeddings: (text: string) => Promise<number[]>;
   maxResults?: number;
-  include?: string[];
+  include?: IncludeEnum[];
   batchSize?: number;
 }) {
   const results = [];
-  
+
   // Process queries in batches to avoid overwhelming the system
   for (let i = 0; i < queries.length; i += batchSize) {
     const batch = queries.slice(i, i + batchSize);
-    logger.info(`🔍 Processing batch ${i / batchSize + 1} of ${Math.ceil(queries.length / batchSize)}...`);
-    
+    logger.info(
+      `🔍 Processing batch ${i / batchSize + 1} of ${Math.ceil(queries.length / batchSize)}...`
+    );
+
     // Process current batch in parallel
     const batchPromises = batch.map(async (query, idx) => {
       try {
-        logger.debug(`  • Processing query ${i + idx + 1}/${queries.length}: ${query.substring(0, 50)}...`);
+        logger.debug(
+          `  • Processing query ${i + idx + 1}/${queries.length}: ${query.substring(0, 50)}...`
+        );
         const result = await vectorSearch({
           collection,
           query,
@@ -98,11 +102,11 @@ export async function batchVectorSearch({
         return { success: false, query, error };
       }
     });
-    
+
     // Wait for all queries in the current batch to complete
     const batchResults = await Promise.all(batchPromises);
     results.push(...batchResults);
   }
-  
+
   return results;
 }

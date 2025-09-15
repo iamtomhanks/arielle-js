@@ -1,3 +1,4 @@
+import { IncludeEnum } from 'chromadb';
 import { Logger } from '../../../utils/logger.js';
 import {
   DEFAULT_EMBEDDING_MODEL,
@@ -81,7 +82,7 @@ export abstract class BaseLLMProvider implements LLMProviderInterface {
         query,
         generateEmbeddings: this.generateEmbeddings.bind(this),
         maxResults: 5,
-        include: ['documents', 'metadatas', 'distances'],
+        include: [IncludeEnum['documents'], IncludeEnum['metadatas'], IncludeEnum['distances']],
       });
 
       // If no results, return early
@@ -109,8 +110,13 @@ export abstract class BaseLLMProvider implements LLMProviderInterface {
 
         console.log(`📊 Retrieved ${resultDocuments.length} results`);
 
+        const filteredResultDocuments: string[] = resultDocuments.filter(
+          (doc: string | null) => doc !== null
+        );
+
         // Log details of each result
-        resultDocuments.forEach((doc: string, index: number) => {
+
+        filteredResultDocuments.forEach((doc: string, index: number) => {
           console.log(`\n📄 Result ${index + 1}:`);
           console.log(`  Document: ${doc?.substring(0, 150)}${doc?.length > 150 ? '...' : ''}`);
           console.log(`  Metadata:`, resultMetadatas[index] || 'None');
@@ -120,12 +126,13 @@ export abstract class BaseLLMProvider implements LLMProviderInterface {
         });
 
         // Format the context from results
-        const context = resultDocuments
+        const context = filteredResultDocuments
           .map((doc: string, index: number) => {
             if (!doc) return null;
             const metadata = resultMetadatas[index] || {};
             const distance = resultDistances[index];
-            const similarity = distance !== undefined ? (1 - distance).toFixed(2) : 'N/A';
+            const similarity =
+              distance !== undefined && distance !== null ? (1 - distance).toFixed(2) : 'N/A';
 
             return `[${metadata.method || 'UNKNOWN'} ${metadata.path || ''} | Similarity: ${similarity}]\n${doc}`;
           })
