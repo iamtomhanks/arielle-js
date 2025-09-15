@@ -1,4 +1,5 @@
 import { Collection } from 'chromadb';
+import { Logger } from '../../../../utils/logger.js';
 import { LLMFactory } from '../llm-factory.js';
 import { LLMConfig } from '../types/llm.types.js';
 import { ConversationManager } from './conversation-manager.js';
@@ -17,59 +18,82 @@ export class LLMService {
     this.collection = options.collection;
     this.llmConfig = options.llmConfig;
     const provider = LLMFactory.createProvider(this.llmConfig);
-    
+
     this.conversationManager = new ConversationManager();
     this.intentDetector = new IntentDetector(provider, this.collection);
     this.queryExecutor = new QueryExecutor(provider, this.collection, this.conversationManager);
-    
+
     console.log(`\n🔧 LLM Service initialized with provider: ${provider.getProviderName()}`);
   }
 
   async processQuery(query: string) {
     this.conversationManager.addMessage('user', query);
+    const logger = Logger.getInstance(!!process.env.DEBUG);
 
     try {
+      logger.info('🔍 Starting to process query...');
+
       // Verify collection is accessible
       await this.verifyCollectionAccess();
-      
+
       // Detect intents
+      logger.debug('Detecting intents...');
       const intents = await this.intentDetector.detectIntents(query);
-      
+
       // Process single intent
       if (intents.length <= 1) {
         const intent = intents[0] || query;
-        console.log(`\n🔍 Processing query: ${intent}`);
-        
+        logger.info(`Processing single intent: "${intent}"`);
+
         const result = await this.queryExecutor.executeQuery(intent);
         const answer = result.answer || 'I could not find any relevant information.';
-        
+
+        logger.debug('Generated response successfully');
         console.log('\n🤖 Arielle:', answer);
         this.conversationManager.addMessage('assistant', answer);
         return;
       }
-      
+
       // Process multiple intents
-      console.log(`\n🔍 Processing ${intents.length} intents from your query...`);
+      logger.info(`Processing ${intents.length} intents in parallel...`);
       const results = await this.queryExecutor.executeBatchQueries(intents);
-      
+
       // Combine and display results
+      logger.debug('Formatting results...');
       const combinedResults = this.formatResults(results, intents);
+
+      logger.info('All intents processed successfully');
       console.log('\n🤖 Arielle:', combinedResults);
       this.conversationManager.addMessage('assistant', combinedResults);
-      
     } catch (error) {
-      console.error('\n❌ Error:', error instanceof Error ? error.message : 'An unknown error occurred');
-      this.conversationManager.addMessage('assistant', 'I encountered an error processing your request.');
+      console.error(
+        '\n❌ Error:',
+        error instanceof Error ? error.message : 'An unknown error occurred'
+      );
+      this.conversationManager.addMessage(
+        'assistant',
+        'I encountered an error processing your request.'
+      );
     }
   }
 
   private async verifyCollectionAccess() {
+    const logger = Logger.getInstance(!!process.env.DEBUG);
+    logger.debug('Verifying collection access...');
+
     try {
       const info = await this.collection.get();
-      console.log(`\nℹ️  Collection contains ${info.ids?.length || 0} documents`);
+      const docCount = info.ids?.length || 0;
+      logger.info(`Collection contains ${docCount} documents`);
+
+      if (docCount === 0) {
+        logger.warn('Collection is empty. This may affect query results.');
+      }
     } catch (error) {
-      console.error('\n❌ Error accessing collection:', error);
-      throw new Error('Failed to access document database. Please make sure the API documentation was properly loaded.');
+      logger.error('Error accessing collection:', error);
+      throw new Error(
+        'Failed to access document database. Please make sure the API documentation was properly loaded.'
+      );
     }
   }
 
@@ -77,8 +101,9 @@ export class LLMService {
     if (results.length === 0) return 'No results found for your query.';
     if (results.length === 1) return results[0].answer || 'No answer found for this query.';
 
-    const sections = results.map((result, index) => 
-      `## ${index + 1}. ${intents[index]}\n\n${result.answer || 'No specific information found.'}\n`
+    const sections = results.map(
+      (result, index) =>
+        `## ${index + 1}. ${intents[index]}\n\n${result.answer || 'No specific information found.'}\n`
     );
 
     return [
@@ -86,7 +111,7 @@ export class LLMService {
       'Based on your query, here are the steps to accomplish your goal:',
       '',
       ...sections,
-      '---\nYou can ask follow-up questions about any of these steps for more details.'
+      '---\nYou can ask follow-up questions about any of these steps for more details.',
     ].join('\n');
   }
 }
