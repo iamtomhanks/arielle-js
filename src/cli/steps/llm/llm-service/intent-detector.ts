@@ -14,23 +14,30 @@ export class IntentDetector {
 
   async detectIntents(query: string): Promise<string[]> {
     this.logger.info(`🔍 Detecting intents for query: "${query}"`);
-    
+
     try {
       // First, check if this is a multi-intent query
       const isMultiIntent = await this.isMultiIntentQuery(query);
-      
+
       if (!isMultiIntent) {
-        this.logger.debug('Single intent detected');
+        this.logger.info('✅ Single intent detected');
+        this.logger.info(`  1. ${query}`);
         return [query];
       }
 
       // If multiple intents detected, break them down
+      this.logger.info('Breaking down query into multiple intents...');
       const intents = await this.breakDownIntents(query);
-      this.logger.info(`✅ Detected ${intents.length} distinct intents`);
-      intents.forEach((intent, i) => {
-        this.logger.debug(`  ${i + 1}. ${intent}`);
-      });
-      
+
+      if (intents.length > 1) {
+        this.logger.info(`✅ Detected ${intents.length} distinct intents:`);
+        intents.forEach((intent, i) => {
+          this.logger.info(`  ${i + 1}. "${intent}"`);
+        });
+      } else if (intents.length === 1) {
+        this.logger.info(`✅ Single intent after breakdown: "${intents[0]}"`);
+      }
+
       return intents;
     } catch (error) {
       this.logger.error('Error detecting intents, falling back to single intent:', error);
@@ -39,28 +46,28 @@ export class IntentDetector {
   }
 
   private async isMultiIntentQuery(query: string): Promise<boolean> {
-    this.logger.debug('Checking if query contains multiple intents...');
-    
+    this.logger.info('Checking if query contains multiple intents...');
+
     try {
       const detectionResult = await this.provider.query({
         collection: this.collection,
-        query: `Analyze if this query contains multiple distinct intents that should be processed separately. 
+        query: `Analyze if this query contains multiple distinct intents that should be processed separately.
         Respond with "true" if it contains multiple intents, "false" otherwise: "${query}"`,
         context: {
           examples: [
-            { query: "create a customer and charge them", hasMultiple: true },
-            { query: "how do I create a customer", hasMultiple: false },
-            { query: "set up a payment and send receipt", hasMultiple: true },
-            { query: "what's the status of my order", hasMultiple: false }
-          ]
+            { query: 'create a customer and charge them', hasMultiple: true },
+            { query: 'how do I create a customer', hasMultiple: false },
+            { query: 'set up a payment and send receipt', hasMultiple: true },
+            { query: "what's the status of my order", hasMultiple: false },
+          ],
         },
         maxTokens: 10,
         temperature: 0.1,
       });
 
       const isMulti = detectionResult.answer.trim().toLowerCase().startsWith('true');
-      this.logger.debug(`Multi-intent detection result: ${isMulti}`);
-      
+      this.logger.info(`Multi-intent detection result: ${isMulti}`);
+
       return isMulti;
     } catch (error) {
       this.logger.error('Error in multi-intent detection:', error);
@@ -69,15 +76,16 @@ export class IntentDetector {
   }
 
   private async breakDownIntents(query: string): Promise<string[]> {
-    this.logger.debug('Breaking down query into individual intents...');
-    
+    this.logger.info('Breaking down query into individual intents...');
+
     try {
       const intentsResult = await this.provider.query({
         collection: this.collection,
         query: `Break down the following query into individual intents: "${query}"`,
         context: {
           instruction: 'Return each intent on a new line, prefixed with "- "',
-          example: 'For "create a customer and charge them", return:\n- create a customer\n- charge them'
+          example:
+            'For "create a customer and charge them", return:\n- create a customer\n- charge them',
         },
         maxTokens: 200,
         temperature: 0.3,
@@ -86,13 +94,15 @@ export class IntentDetector {
       // Parse the response into individual intents
       const intents = intentsResult.answer
         .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.startsWith('- '))
-        .map(line => line.substring(2).trim())
+        .map((line) => line.trim())
+        .filter((line) => line.startsWith('- '))
+        .map((line) => line.substring(2).trim())
         .filter(Boolean);
 
       if (intents.length === 0) {
-        this.logger.warn('No intents could be parsed from the response, falling back to original query');
+        this.logger.warn(
+          'No intents could be parsed from the response, falling back to original query'
+        );
         return [query];
       }
 

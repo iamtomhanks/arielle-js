@@ -33,18 +33,26 @@ export class LLMService {
 
     try {
       logger.info('🔍 Starting to process query...');
+      logger.debug(`Raw query: "${query}"`);
 
       // Verify collection is accessible
       await this.verifyCollectionAccess();
 
       // Detect intents
-      logger.debug('Detecting intents...');
+      logger.info('🔍 Analyzing query for multiple intents...');
       const intents = await this.intentDetector.detectIntents(query);
+
+      return;
+
+      // Log the final list of intents to be processed
+      if (intents.length > 1) {
+        logger.info(`✅ Will process ${intents.length} separate intents`);
+      }
 
       // Process single intent
       if (intents.length <= 1) {
         const intent = intents[0] || query;
-        logger.info(`Processing single intent: "${intent}"`);
+        logger.info(`🔍 Processing intent: "${intent}"`);
 
         const result = await this.queryExecutor.executeQuery(intent);
         const answer = result.answer || 'I could not find any relevant information.';
