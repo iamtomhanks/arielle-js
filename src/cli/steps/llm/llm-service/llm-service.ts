@@ -40,19 +40,18 @@ export class LLMService {
 
       // Detect intents
       logger.info('🔍 Analyzing query for multiple intents...');
-      const intents = await this.intentDetector.detectIntents(query);
+      let intents = await this.intentDetector.detectIntents(query);
 
-      const queryPreparedIntents = intents.map(
-        (intent) => `What are all of the ways that I can ${intent}`
-      );
+      // Add 'what are all the ways as a prefix'
+      intents = intents.map((intent) => `What are all of the ways that I can ${intent}`);
 
       // Log the final list of intents to be processed
-      if (queryPreparedIntents.length > 1) {
-        logger.info(`✅ Will process ${queryPreparedIntents.length} separate intents`);
+      if (intents.length > 1) {
+        logger.info(`✅ Will process ${intents.length} separate intents`);
       }
 
       // Process single intent
-      if (queryPreparedIntents.length <= 1) {
+      if (intents.length <= 1) {
         const intent = intents[0] || query;
         logger.info(`🔍 Processing intent: "${intent}"`);
 
@@ -66,12 +65,31 @@ export class LLMService {
       }
 
       // Process multiple intents
-      logger.info(`Processing ${queryPreparedIntents.length} intents in parallel...`);
-      const results = await this.queryExecutor.executeBatchQueries(intents);
+      logger.info(`Processing ${intents.length} intents in parallel...`);
+      const batchResults = await this.queryExecutor.executeBatchQueries(intents);
 
-      // Combine and display results
+      // Filter out failed queries and log them
+      const failedQueries = batchResults.filter(r => !r.success);
+      if (failedQueries.length > 0) {
+        logger.warn(`Failed to process ${failedQueries.length} intents`);
+        failedQueries.forEach(({ query, error }, index) => {
+          logger.warn(`  ${index + 1}. "${query}" - ${error?.message || 'Unknown error'}`);
+        });
+      }
+
+      // Get successful results
+      const successfulResults = batchResults.filter(r => r.success);
+      
+      if (successfulResults.length === 0) {
+        const errorMessage = 'Failed to process any of the intents. Please try again.';
+        console.log('\n🤖 Arielle:', errorMessage);
+        this.conversationManager.addMessage('assistant', errorMessage);
+        return;
+      }
+
+      // Format and display results
       logger.debug('Formatting results...');
-      const combinedResults = this.formatResults(results, intents);
+      const combinedResults = this.formatResults(batchResults, intents);
 
       logger.info('All intents processed successfully');
       console.log('\n🤖 Arielle:', combinedResults);
@@ -139,14 +157,34 @@ export class LLMService {
     }
   }
 
-  private formatResults(results: any[], intents: string[]) {
-    if (results.length === 0) return 'No results found for your query.';
-    if (results.length === 1) return results[0].answer || 'No answer found for this query.';
-
-    const sections = results.map(
-      (result, index) =>
-        `## ${index + 1}. ${intents[index]}\n\n${result.answer || 'No specific information found.'}\n`
-    );
+  private formatResults(batchResults: Array<{query: string, success: boolean, result?: any, error?: Error}>, intents: string[]) {
+    if (batchResults.length === 0) return 'No results found for your query.';
+    
+    const sections = batchResults.map((item, index) => {
+      if (!item.success) {
+        return `## ${index + 1}. ${intents[index]}\n\n❌ Error: ${item.error?.message || 'Unknown error'}\n`;
+      }
+      
+      const answer = item.result?.answer;
+      const sources = item.result?.sources || [];
+      
+      let section = `## ${index + 1}. ${intents[index]}\n\n`;
+      
+      if (answer) {
+        section += `${answer}\n\n`;
+      } else {
+        section += 'No specific information found.\n\n';
+      }
+      
+      if (sources.length > 0) {
+        section += '**Sources:**\n';
+        sources.forEach((source: string, i: number) => {
+          section += `${i + 1}. ${source}\n`;
+        });
+      }
+      
+      return section;
+    });
 
     return [
       '# Action Plan',
