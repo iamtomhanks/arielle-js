@@ -1,4 +1,5 @@
 import { Collection } from 'chromadb';
+import inquirer from 'inquirer';
 import { Logger } from '../../../../utils/logger.js';
 import { LLMFactory } from '../llm-factory.js';
 import { LLMConfig } from '../types/llm.types.js';
@@ -94,6 +95,37 @@ export class LLMService {
       throw new Error(
         'Failed to access document database. Please make sure the API documentation was properly loaded.'
       );
+    }
+  }
+
+  async startConversation() {
+    const logger = Logger.getInstance(!!process.env.DEBUG);
+    console.log('\n🔍 Arielle is ready to help you with your API questions!');
+    console.log('Type "exit" or "quit" to end the conversation.\n');
+
+    while (true) {
+      try {
+        const { question } = await inquirer.prompt([
+          {
+            type: 'input',
+            name: 'question',
+            message: 'You:',
+          },
+        ]);
+
+        if (['exit', 'quit'].includes(question.toLowerCase().trim())) {
+          console.log('\n👋 Goodbye!');
+          break;
+        }
+
+        if (!question.trim()) continue;
+
+        logger.info(`Processing question: "${question}"`);
+        await this.processQuery(question);
+      } catch (error: any) {
+        logger.error('Error in conversation:', error);
+        console.error('\n❌ Error:', error.message);
+      }
     }
   }
 

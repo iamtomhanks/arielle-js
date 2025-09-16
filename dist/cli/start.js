@@ -97,23 +97,8 @@ export const startCommand = new Command('start')
                     const llmService = new LLMService({ collection, llmConfig });
                     // Clear the spinner before starting the conversation
                     spinner?.stop();
-                    // Start the interactive conversation loop
-                    const readline = require('readline').createInterface({
-                        input: process.stdin,
-                        output: process.stdout,
-                    });
-                    const askQuestion = () => {
-                        readline.question('\n🤔 You: ', async (query) => {
-                            if (query.toLowerCase() === 'exit' || query.toLowerCase() === 'quit') {
-                                readline.close();
-                                return;
-                            }
-                            await llmService.processQuery(query);
-                            askQuestion(); // Continue the conversation
-                        });
-                    };
-                    console.log('\n💬 Start chatting with Arielle! Type "exit" or "quit" to end the session.');
-                    askQuestion();
+                    // Start the interactive conversation
+                    await llmService.startConversation();
                     // Re-create the spinner if we need to continue with other operations
                     spinner = createProcessingSpinner('Waiting for input...');
                 }
