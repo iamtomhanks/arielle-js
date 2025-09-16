@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { BaseLLMProvider } from '../base-llm-provider.js';
-import { LLMQueryOptions, LLMQueryResult } from '../types/llm.types.js';
+import { CompletionOptions, LLMQueryOptions, LLMQueryResult } from '../types/llm.types.js';
 
 export class GoogleGenerativeAIProvider extends BaseLLMProvider {
   private model: any;
@@ -42,6 +42,34 @@ export class GoogleGenerativeAIProvider extends BaseLLMProvider {
       temperature: config.temperature || 0.7,
       maxOutputTokens: config.maxTokens || 1000,
     };
+  }
+
+  async complete(prompt: string, options: CompletionOptions = {}): Promise<string> {
+    try {
+      this.logger.debug(`Generating completion for prompt (${prompt.length} chars)`);
+
+      const result = await this.model.generateContent({
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: prompt }],
+          },
+        ],
+        generationConfig: {
+          temperature: options.temperature ?? this.generationConfig.temperature,
+          maxOutputTokens: options.maxTokens ?? this.generationConfig.maxOutputTokens,
+        },
+      });
+
+      const response = await result.response;
+      const text = response.text();
+
+      this.logger.debug(`Generated completion (${text.length} chars)`);
+      return text;
+    } catch (error: any) {
+      this.logger.error('Error generating completion:', error);
+      throw new Error(`Failed to generate completion: ${error.message}`);
+    }
   }
 
   async generateEmbeddings(text: string): Promise<number[]> {

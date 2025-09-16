@@ -5,7 +5,7 @@ import {
   EMBEDDING_MODELS,
   validateEmbeddingDimensions,
 } from './embedding-models.js';
-import { LLMProviderInterface, LLMQueryOptions, LLMQueryResult } from './types/llm.types.js';
+import { CompletionOptions, LLMProviderInterface, LLMQueryOptions, LLMQueryResult } from './types/llm.types.js';
 import { vectorSearch } from './vector-search.js';
 
 export abstract class BaseLLMProvider implements LLMProviderInterface {
@@ -26,6 +26,13 @@ export abstract class BaseLLMProvider implements LLMProviderInterface {
   }
 
   abstract query(options: LLMQueryOptions): Promise<LLMQueryResult>;
+
+  /**
+   * Generate a completion for the given prompt without vector search
+   * @param prompt The prompt to complete
+   * @param options Completion options
+   */
+  abstract complete(prompt: string, options?: CompletionOptions): Promise<string>;
 
   getProviderName(): string {
     return this.providerName;

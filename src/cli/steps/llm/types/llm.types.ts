@@ -16,11 +16,22 @@ export interface LLMQueryOptions {
   maxTokens?: number;
 }
 
+export interface CompletionOptions {
+  temperature?: number;
+  maxTokens?: number;
+  systemPrompt?: string;
+}
+
 export interface LLMProviderInterface {
   /**
-   * Query the LLM with the given question and context
+   * Query the LLM with the given question and context using vector search
    */
   query(options: LLMQueryOptions): Promise<LLMQueryResult>;
+
+  /**
+   * Generate a completion for the given prompt without vector search
+   */
+  complete(prompt: string, options?: CompletionOptions): Promise<string>;
 
   /**
    * Get the name of the provider

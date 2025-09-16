@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { BaseLLMProvider } from '../base-llm-provider.js';
-import { LLMQueryOptions, LLMQueryResult } from '../types/llm.types.js';
+import { CompletionOptions, LLMQueryOptions, LLMQueryResult } from '../types/llm.types.js';
 
 export class OpenAIProvider extends BaseLLMProvider {
   private client: OpenAI;
@@ -32,6 +32,39 @@ export class OpenAIProvider extends BaseLLMProvider {
     } catch (error: any) {
       this.logger.error('Error generating embeddings:', error);
       throw new Error(`Failed to generate embeddings: ${error.message}`);
+    }
+  }
+
+  async complete(prompt: string, options: CompletionOptions = {}): Promise<string> {
+    if (!this.isConfigured()) {
+      throw new Error('OpenAI provider is not properly configured');
+    }
+
+    try {
+      this.logger.debug(`Generating completion for prompt (${prompt.length} chars)`);
+      
+      const response = await this.client.chat.completions.create({
+        model: this.config.model || 'gpt-4',
+        messages: [
+          {
+            role: 'system',
+            content: options.systemPrompt || 'You are a helpful assistant.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: options.temperature ?? 0.7,
+        max_tokens: options.maxTokens,
+      });
+
+      const text = response.choices[0]?.message?.content || '';
+      this.logger.debug(`Generated completion (${text.length} chars)`);
+      return text;
+    } catch (error: any) {
+      this.logger.error('Error generating completion:', error);
+      throw new Error(`Failed to generate completion: ${error.message}`);
     }
   }
 
