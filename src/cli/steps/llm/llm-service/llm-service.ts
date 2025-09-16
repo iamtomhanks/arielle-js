@@ -42,15 +42,17 @@ export class LLMService {
       logger.info('🔍 Analyzing query for multiple intents...');
       const intents = await this.intentDetector.detectIntents(query);
 
-      return;
+      const queryPreparedIntents = intents.map(
+        (intent) => `What are all of the ways that I can ${intent}`
+      );
 
       // Log the final list of intents to be processed
-      if (intents.length > 1) {
-        logger.info(`✅ Will process ${intents.length} separate intents`);
+      if (queryPreparedIntents.length > 1) {
+        logger.info(`✅ Will process ${queryPreparedIntents.length} separate intents`);
       }
 
       // Process single intent
-      if (intents.length <= 1) {
+      if (queryPreparedIntents.length <= 1) {
         const intent = intents[0] || query;
         logger.info(`🔍 Processing intent: "${intent}"`);
 
@@ -64,7 +66,7 @@ export class LLMService {
       }
 
       // Process multiple intents
-      logger.info(`Processing ${intents.length} intents in parallel...`);
+      logger.info(`Processing ${queryPreparedIntents.length} intents in parallel...`);
       const results = await this.queryExecutor.executeBatchQueries(intents);
 
       // Combine and display results

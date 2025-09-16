@@ -63,7 +63,7 @@ Respond with only "true" or "false":`;
 
       const response = await this.provider.complete(prompt, {
         temperature: 0.1,
-        maxTokens: 10
+        maxTokens: 10,
       });
 
       const isMulti = response.trim().toLowerCase().startsWith('true');
@@ -82,18 +82,18 @@ Respond with only "true" or "false":`;
     try {
       const prompt = `Break down the following query into individual intents.
 
-Example:
-Input: "create a customer and charge them"
-Output:
-- create a customer
-- charge them
+          Example:
+          Input: "create a customer and charge them"
+          Output:
+          - create a customer
+          - charge them
 
-Input: "${query}"
-Output:`;
+          Input: "${query}"
+          Output:`;
 
       const response = await this.provider.complete(prompt, {
         temperature: 0.3,
-        maxTokens: 200
+        maxTokens: 200,
       });
 
       // Parse the response into individual intents
@@ -103,8 +103,6 @@ Output:`;
         .filter((line) => line.startsWith('- '))
         .map((line) => line.substring(2).trim())
         .filter(Boolean);
-
-      this.logger.info(`Broken down intents: ${intents.join(', ')}`);
 
       if (intents.length === 0) {
         this.logger.warn(
