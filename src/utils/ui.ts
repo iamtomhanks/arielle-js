@@ -1,16 +1,16 @@
+import boxen, { type Options as BoxenOptions } from 'boxen';
 import chalk from 'chalk';
-import boxen from 'boxen';
 import gradient from 'gradient-string';
-import { type Options as BoxenOptions } from 'boxen';
 
 const BANNER_TEXT = `
- █████╗ ██████╗ ██╗███████╗██╗     ███████╗██╗     
-██╔══██╗██╔══██╗██║██╔════╝██║     ██╔════╝██║     
-███████║██████╔╝██║█████╗  ██║     █████╗  ██║     
-██╔══██║██╔══██╗██║██╔══╝  ██║     ██╔══╝  ██║     
-██║  ██║██║  ██║██║███████╗███████╗███████╗███████╗
-╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚══════╝╚══════╝
-`;
+  █████╗ ██████╗ ██╗███████╗██╗     ██╗     ███████╗
+ ██╔══██╗██╔══██╗██║██╔════╝██║     ██║     ██╔════╝
+███████║██████╔╝██║█████╗  ██║     ██║     █████╗
+██╔══██║██╔══██╗██║██╔══╝  ██║     ██║     ██╔══╝
+ ██║  ██║██║  ██║██║███████╗███████╗███████╗███████╗
+ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝╚══════╝╚══════╝╚══════╝╚══════╝
+
+  🚀  AI-Powered API Exploration & Documentation  🚀`;
 
 const BOXEN_OPTS: BoxenOptions = {
   padding: 1,
@@ -30,7 +30,7 @@ export class UI {
         title: 'OpenAPI Companion',
         titleAlignment: 'center',
       });
-      
+
       // Clear the console first
       process.stdout.write('\x1Bc');
       // Then write the banner
@@ -81,15 +81,15 @@ export class UI {
 
   static table(rows: string[][], headers?: string[]) {
     if (headers) {
-      const headerRow = headers.map(h => chalk.cyan.bold(h));
+      const headerRow = headers.map((h) => chalk.cyan.bold(h));
       rows = [headerRow, ...rows];
     }
-    
+
     // Calculate column widths
-    const colWidths = rows[0].map((_, colIndex) => 
-      Math.max(...rows.map(row => row[colIndex]?.length || 0))
+    const colWidths = rows[0].map((_, colIndex) =>
+      Math.max(...rows.map((row) => row[colIndex]?.length || 0))
     );
-    
+
     // Print rows
     rows.forEach((row, rowIndex) => {
       const isHeader = headers && rowIndex === 0;
@@ -97,12 +97,12 @@ export class UI {
         const padding = ' '.repeat(colWidths[colIndex] - (cell?.length || 0));
         return (cell || '') + padding;
       });
-      
+
       const rowStr = paddedRow.join('  ');
       console.log(isHeader ? chalk.cyan(rowStr) : rowStr);
-      
+
       if (isHeader) {
-        const divider = colWidths.map(w => '─'.repeat(w)).join('┼');
+        const divider = colWidths.map((w) => '─'.repeat(w)).join('┼');
         console.log(chalk.dim(divider));
       }
     });
