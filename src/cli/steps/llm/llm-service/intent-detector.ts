@@ -80,19 +80,34 @@ Respond with only "true" or "false":`;
     this.logger.info('Breaking down query into individual intents...');
 
     try {
-      const prompt = `Break down the following query into individual intents.
+      const prompt = `Break down the following query into individual, independent intents focusing on core functionalities.
 
-          Example:
+          Guidelines:
+          1. Focus on semantic meaning, not just surface structure
+          2. Handle 'each' and 'all' by considering the core action
+          3. Each intent should be a complete, standalone task
+
+          Examples:
           Input: "create a customer and charge them"
           Output:
           - create a customer
-          - charge them
+          - create a charge for a customer
+
+          Input: "fetch all customers then add a one-off charge for each"
+          Output:
+          - fetch all customers
+          - add a one-off charge for a customer
+
+          Input: "get all users and send them an email"
+          Output:
+          - get all users
+          - send an email to a user
 
           Input: "${query}"
           Output:`;
 
       const response = await this.provider.complete(prompt, {
-        temperature: 0.3,
+        temperature: 0.2,  // Lower temperature for more deterministic breakdowns
         maxTokens: 200,
       });
 
