@@ -1,3 +1,6 @@
 /node_modules
 /dist
 /phase2-output
+
+/ariellejs-chroma-db-data
+ariellejs-chroma-db-data/chroma.sqlite3
